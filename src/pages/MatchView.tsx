@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
+import PlayerCard from './PlayerCard'
 
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
   if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -322,16 +323,11 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         ) : (
           <>
             {!hasVoted ? (
-              <>
-                <p style={{ color: '#94a3b8', fontSize: 13, marginBottom: 12 }}>Vota al jugador destacado del partido:</p>
-                {allPlayers.map(player => (
-                  <button key={player.id} style={{ ...styles.playerBtn(false), display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => votePlayer(player.id)}>
-                    <Avatar url={player.photo_url} name={player.name} size={28} />
-                    <span>{player.name}</span>
-                    <span style={{ color: '#d4a0b0', fontSize: 12, marginLeft: 'auto' }}>({getMvpVoteCount(player.id)} votos)</span>
-                  </button>
-                ))}
-              </>
+              <PlayerCard
+                players={allPlayers}
+                onVote={votePlayer}
+                voteCount={getMvpVoteCount}
+              />
             ) : (
               <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, border: '1px solid #8B1A3A' }}>
                 <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 12 }}>Votos actuales:</p>
