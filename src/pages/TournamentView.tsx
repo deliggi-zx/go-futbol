@@ -119,7 +119,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         if (player._newPhoto) {
           photoUrl = await uploadImage(player._newPhoto, `players/${player.id}.jpg`)
         }
-        await supabase.from('players').update({ name: player.name, photo_url: photoUrl }).eq('id', player.id)
+        await supabase.from('players').update({ name: player.name, photo_url: photoUrl, handicap: player.handicap, position: player.position, bio: player.bio, mares: player.mares }).eq('id', player.id)
       }
 
       await loadData()
@@ -188,6 +188,28 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                     updated[j] = { ...updated[j], name: e.target.value }
                     setEditingTeam({ ...editingTeam, _players: updated })
                   }} placeholder="Nombre del jugador" />
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                    <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Hcp" min={0} max={10} value={player.handicap ?? 0} onChange={e => {
+                      const updated = [...editingTeam._players]
+                      updated[j] = { ...updated[j], handicap: Number(e.target.value) }
+                      setEditingTeam({ ...editingTeam, _players: updated })
+                    }} />
+                    <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Pos" min={1} max={4} value={player.position ?? 0} onChange={e => {
+                      const updated = [...editingTeam._players]
+                      updated[j] = { ...updated[j], position: Number(e.target.value) }
+                      setEditingTeam({ ...editingTeam, _players: updated })
+                    }} />
+                  </div>
+                  <input style={{ ...styles.input, marginBottom: 6 }} placeholder="Resena breve" value={player.bio ?? ''} onChange={e => {
+                    const updated = [...editingTeam._players]
+                    updated[j] = { ...updated[j], bio: e.target.value }
+                    setEditingTeam({ ...editingTeam, _players: updated })
+                  }} />
+                  <input style={{ ...styles.input, marginBottom: 6 }} placeholder="Yeguas" value={player.mares ?? ''} onChange={e => {
+                    const updated = [...editingTeam._players]
+                    updated[j] = { ...updated[j], mares: e.target.value }
+                    setEditingTeam({ ...editingTeam, _players: updated })
+                  }} />
                   <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 11 }} onChange={e => {
                     const updated = [...editingTeam._players]
                     updated[j] = { ...updated[j], _newPhoto: e.target.files?.[0] ?? null }
