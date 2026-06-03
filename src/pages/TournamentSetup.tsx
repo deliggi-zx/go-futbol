@@ -3,9 +3,12 @@ import { supabase } from '../lib/supabase'
 
 type Props = { onCreated: (t: any) => void }
 
-const emptyTeam = () => ({ name: '', handicap: 0, group: 'A', players: [{ name: '', photo: null as File | null }], logo: null as File | null })
+const emptyTeam = () => ({
+  name: '', handicap: 0, group: 'A', logo: null as File | null,
+  players: [{ name: '', photo: null as File | null, handicap: 0, position: 0, bio: '', mares: '' }]
+})
 
-const DEFAULT_AWARDS = ['Campeón', 'MBP (Mejor Jugador)', 'Goleador', 'Manta Mejor Yegua', 'Revelación']
+const DEFAULT_AWARDS = ['Campeon', 'MBP (Mejor Jugador)', 'Goleador', 'Manta Mejor Yegua', 'Revelacion']
 
 export default function TournamentSetup({ onCreated }: Props) {
   const [name, setName] = useState('Tribu Polo 2026')
@@ -30,7 +33,10 @@ export default function TournamentSetup({ onCreated }: Props) {
   }
 
   function addPlayer(teamIdx: number) {
-    setTeams(prev => prev.map((t, i) => i === teamIdx ? { ...t, players: [...t.players, { name: '', photo: null }] } : t))
+    setTeams(prev => prev.map((t, i) => i === teamIdx
+      ? { ...t, players: [...t.players, { name: '', photo: null, handicap: 0, position: 0, bio: '', mares: '' }] }
+      : t
+    ))
   }
 
   function addAward() {
@@ -51,7 +57,7 @@ export default function TournamentSetup({ onCreated }: Props) {
   }
 
   async function handleCreate() {
-    if (!name || !date) return alert('Completá nombre y fecha')
+    if (!name || !date) return alert('Completa nombre y fecha')
     setSaving(true)
     try {
       const { data: tournament } = await supabase
@@ -59,7 +65,6 @@ export default function TournamentSetup({ onCreated }: Props) {
         .insert({ name, date, chukkers_per_match: chukkers, status: 'setup' })
         .select().single()
 
-      // Guardar premios
       if (awards.length > 0) {
         await supabase.from('award_types').insert(
           awards.map((a, i) => ({ tournament_id: tournament.id, name: a, order_index: i }))
@@ -84,7 +89,15 @@ export default function TournamentSetup({ onCreated }: Props) {
           if (player.photo) {
             photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
           }
-          await supabase.from('players').insert({ team_id: savedTeam.id, name: player.name, photo_url: photoUrl })
+          await supabase.from('players').insert({
+            team_id: savedTeam.id,
+            name: player.name,
+            photo_url: photoUrl,
+            handicap: player.handicap,
+            position: player.position,
+            bio: player.bio,
+            mares: player.mares,
+          })
         }
       }
 
@@ -102,11 +115,8 @@ export default function TournamentSetup({ onCreated }: Props) {
     const groups = ['A', 'B']
     for (const group of groups) {
       const { data: savedTeams } = await supabase
-        .from('teams')
-        .select('id, name, group_name')
-        .eq('tournament_id', tournamentId)
-        .eq('group_name', group)
-
+        .from('teams').select('id, name, group_name')
+        .eq('tournament_id', tournamentId).eq('group_name', group)
       if (!savedTeams) continue
       for (let i = 0; i < savedTeams.length; i++) {
         for (let j = i + 1; j < savedTeams.length; j++) {
@@ -114,9 +124,7 @@ export default function TournamentSetup({ onCreated }: Props) {
             tournament_id: tournamentId,
             team_home_id: savedTeams[i].id,
             team_away_id: savedTeams[j].id,
-            stage: 'group',
-            group_name: group,
-            status: 'pending'
+            stage: 'group', group_name: group, status: 'pending'
           })
         }
       }
@@ -151,7 +159,7 @@ export default function TournamentSetup({ onCreated }: Props) {
         <img src="/logo.jpg" alt="Tribu de Polo" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'cover' }} />
       </div>
       <h1 style={styles.title}>TRIBU POLO</h1>
-      <p style={styles.sub}>Configuración del torneo</p>
+      <p style={styles.sub}>Configuracion del torneo</p>
 
       {/* Stepper */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
@@ -159,7 +167,7 @@ export default function TournamentSetup({ onCreated }: Props) {
           <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: '50%', background: step === s ? '#C9A84C' : '#8B1A3A', color: step === s ? '#4A0B1E' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{i + 1}</div>
             <span style={{ fontSize: 12, color: step === s ? '#C9A84C' : '#d4a0b0' }}>{s === 'config' ? 'Config' : s === 'teams' ? 'Equipos' : 'Premios'}</span>
-            {i < 2 && <span style={{ color: '#8B1A3A' }}>→</span>}
+            {i < 2 && <span style={{ color: '#8B1A3A' }}>-</span>}
           </div>
         ))}
       </div>
@@ -185,7 +193,7 @@ export default function TournamentSetup({ onCreated }: Props) {
             ))}
           </div>
 
-          <button style={styles.btn} onClick={() => setStep('teams')}>Siguiente → Cargar equipos</button>
+          <button style={styles.btn} onClick={() => setStep('teams')}>Siguiente - Cargar equipos</button>
         </div>
       )}
 
@@ -211,10 +219,16 @@ export default function TournamentSetup({ onCreated }: Props) {
 
               <p style={{ color: '#d4a0b0', fontSize: 12, marginTop: 12, marginBottom: 8 }}>Jugadores:</p>
               {team.players.map((player, j) => (
-                <div key={j} style={{ ...styles.row, marginBottom: 8, alignItems: 'center' }}>
+                <div key={j} style={{ ...styles.row, marginBottom: 8, alignItems: 'flex-start' }}>
                   <Avatar url={player.photo ? URL.createObjectURL(player.photo) : null} name={player.name || '?'} size={36} />
                   <div style={{ flex: 1 }}>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder={`Jugador ${j + 1}`} value={player.name} onChange={e => updatePlayer(i, j, 'name', e.target.value)} />
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                      <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Hcp" min={0} max={10} value={player.handicap} onChange={e => updatePlayer(i, j, 'handicap', Number(e.target.value))} />
+                      <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Pos (1-4)" min={1} max={4} value={player.position} onChange={e => updatePlayer(i, j, 'position', Number(e.target.value))} />
+                    </div>
+                    <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Resena breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
+                    <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Yeguas (opcional)" value={player.mares} onChange={e => updatePlayer(i, j, 'mares', e.target.value)} />
                     <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
                   </div>
                 </div>
@@ -223,8 +237,8 @@ export default function TournamentSetup({ onCreated }: Props) {
             </div>
           ))}
           <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('config')}>← Volver</button>
-            <button style={styles.btn} onClick={() => setStep('awards')}>Siguiente → Premios</button>
+            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('config')}>Volver</button>
+            <button style={styles.btn} onClick={() => setStep('awards')}>Siguiente - Premios</button>
           </div>
         </div>
       )}
@@ -233,14 +247,14 @@ export default function TournamentSetup({ onCreated }: Props) {
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
           <div style={styles.teamCard}>
             <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Premios del torneo</p>
-            <p style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}>Definí qué premios se van a entregar. Al finalizar el torneo podrás cargar foto y ganador de cada uno.</p>
+            <p style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}>Define que premios se van a entregar. Al finalizar el torneo podras cargar foto y ganador de cada uno.</p>
 
             {awards.map((award, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ flex: 1, background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14 }}>
-                  🏆 {award}
+                  {award}
                 </div>
-                <button onClick={() => removeAward(i)} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}>✕</button>
+                <button onClick={() => removeAward(i)} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}>x</button>
               </div>
             ))}
 
@@ -251,9 +265,9 @@ export default function TournamentSetup({ onCreated }: Props) {
           </div>
 
           <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('teams')}>← Volver</button>
+            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('teams')}>Volver</button>
             <button style={styles.btn} onClick={handleCreate} disabled={saving}>
-              {saving ? 'Creando...' : '🏆 Crear torneo'}
+              {saving ? 'Creando...' : 'Crear torneo'}
             </button>
           </div>
         </div>
