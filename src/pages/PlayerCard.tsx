@@ -14,8 +14,9 @@ type Player = {
 type Props = {
   players: Player[]
   onVote: (playerId: string) => void
-  onSkip?: () => void
+  onChangeVote?: (oldId: string, newId: string) => void
   voteCount: (playerId: string) => number
+  votedPlayerId?: string | null
 }
 
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
@@ -27,17 +28,18 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; s
   )
 }
 
-export default function PlayerCard({ players, onVote, voteCount }: Props) {
+export default function PlayerCard({ players, onVote, onChangeVote, voteCount, votedPlayerId }: Props) {
   const [index, setIndex] = useState(0)
   const [swipeDir, setSwipeDir] = useState<'left' | 'right' | null>(null)
   const [dragX, setDragX] = useState(0)
-  const [voted, setVoted] = useState(false)
   const touchStartX = useRef(0)
   const isDragging = useRef(false)
 
-  if (players.length === 0 || voted) return null
+  if (players.length === 0) return null
 
   const player = players[index]
+  const isVoted = votedPlayerId === player.id
+  const hasVotedSomeone = !!votedPlayerId
 
   function animateAndNext(dir: 'left' | 'right', action: () => void) {
     setSwipeDir(dir)
@@ -49,9 +51,14 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
   }
 
   function handleVote() {
+    if (isVoted) return
     animateAndNext('right', () => {
-      onVote(player.id)
-      setVoted(true)
+      if (hasVotedSomeone && onChangeVote) {
+        onChangeVote(votedPlayerId!, player.id)
+      } else {
+        onVote(player.id)
+      }
+      setIndex(i => (i + 1) % players.length)
     })
   }
 
@@ -73,7 +80,6 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
     })
   }
 
-  // Touch handlers
   function onTouchStart(e: React.TouchEvent) {
     touchStartX.current = e.touches[0].clientX
     isDragging.current = true
@@ -87,7 +93,7 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
 
   function onTouchEnd() {
     isDragging.current = false
-    if (dragX > 80) {
+    if (dragX > 80 && !isVoted) {
       handleVote()
     } else if (dragX < -80) {
       handleSkip()
@@ -103,18 +109,27 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
     ? 'translateX(130%) rotate(20deg)'
     : `translateX(${dragX}px) rotate(${cardRotation}deg)`
 
-  const showVoteHint = dragX > 40
+  const showVoteHint = dragX > 40 && !isVoted
   const showSkipHint = dragX < -40
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+
+      {hasVotedSomeone && (
+        <div style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #C9A84C', borderRadius: 20, padding: '4px 14px' }}>
+          <span style={{ color: '#C9A84C', fontSize: 12, fontWeight: 600 }}>
+            &#9733; Votaste a {players.find(p => p.id === votedPlayerId)?.name ?? ''} — podés cambiar tu voto
+          </span>
+        </div>
+      )}
+
       {/* Indicadores */}
       <div style={{ display: 'flex', gap: 6 }}>
-        {players.map((_, i) => (
-          <div key={i} style={{
+        {players.map((p, i) => (
+          <div key={i} onClick={() => setIndex(i)} style={{
             width: i === index ? 20 : 6, height: 6, borderRadius: 3,
-            background: i === index ? '#C9A84C' : '#8B1A3A',
-            transition: 'width 0.2s'
+            background: p.id === votedPlayerId ? '#C9A84C' : i === index ? '#fff' : '#8B1A3A',
+            transition: 'width 0.2s', cursor: 'pointer'
           }} />
         ))}
       </div>
@@ -127,14 +142,14 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
           maxWidth: 340,
           borderRadius: 20,
           overflow: 'hidden',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-          border: '1px solid #8B1A3A',
+          boxShadow: isVoted ? '0 0 24px rgba(201,168,76,0.5)' : '0 8px 32px rgba(0,0,0,0.6)',
+          border: isVoted ? '2px solid #C9A84C' : '1px solid #8B1A3A',
           transform: cardTranslate,
           transition: swipeDir ? 'transform 0.3s ease-in' : dragX !== 0 ? 'none' : 'transform 0.2s ease-out',
           background: '#1a0a10',
           aspectRatio: '3/4',
           cursor: 'grab',
-          userSelect: 'none',
+          userSelect: 'none' as const,
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -147,6 +162,13 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
         ) : (
           <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #4A0B1E, #8B1A3A)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
             <span style={{ fontSize: 80, fontWeight: 900, color: '#C9A84C', opacity: 0.5 }}>{player.name.charAt(0)}</span>
+          </div>
+        )}
+
+        {/* Badge votado */}
+        {isVoted && (
+          <div style={{ position: 'absolute', top: 12, right: 12, background: '#C9A84C', borderRadius: 20, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ color: '#4A0B1E', fontSize: 13, fontWeight: 900 }}>&#9733; Tu voto</span>
           </div>
         )}
 
@@ -164,7 +186,7 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
           </div>
         )}
 
-        {/* Gradiente inferior */}
+        {/* Info inferior */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%)', padding: '32px 16px 16px' }}>
           {player.team && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
@@ -202,47 +224,43 @@ export default function PlayerCard({ players, onVote, voteCount }: Props) {
           background: '#1a0a10', border: '2px solid #8B1A3A',
           color: '#8B1A3A', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          &larr;
-        </button>
+        }}>&larr;</button>
+
         <button onClick={handleSkip} style={{
           width: 56, height: 56, borderRadius: '50%',
           background: '#1a0a10', border: '2px solid #8B1A3A',
           color: '#d4a0b0', fontSize: 22, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
-        }}>
-          &times;
-        </button>
-        <button onClick={handleVote} style={{
+        }}>&times;</button>
+
+        <button onClick={handleVote} disabled={isVoted} style={{
           width: 72, height: 72, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #C9A84C, #a07830)',
-          border: 'none', fontSize: 28, cursor: 'pointer',
+          background: isVoted ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #C9A84C, #a07830)',
+          border: isVoted ? '2px solid #C9A84C' : 'none',
+          fontSize: 28, cursor: isVoted ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 20px rgba(201,168,76,0.5)',
           color: '#fff',
-        }}>
-          &#9733;
-        </button>
+        }}>&#9733;</button>
+
         <button onClick={handleNext} style={{
           width: 56, height: 56, borderRadius: '50%',
           background: '#1a0a10', border: '2px solid #8B1A3A',
           color: '#d4a0b0', fontSize: 22, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
-        }}>
-          &times;
-        </button>
+        }}>&times;</button>
+
         <button onClick={handleNext} style={{
           width: 48, height: 48, borderRadius: '50%',
           background: '#1a0a10', border: '2px solid #8B1A3A',
           color: '#8B1A3A', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          &rarr;
-        </button>
+        }}>&rarr;</button>
       </div>
-      <p style={{ color: '#d4a0b0', fontSize: 11, margin: 0 }}>Desliza la tarjeta o usa los botones</p>
+
+      <p style={{ color: '#d4a0b0', fontSize: 11, margin: 0 }}>Desliza o usa los botones</p>
     </div>
   )
 }
