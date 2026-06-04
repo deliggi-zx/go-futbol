@@ -38,7 +38,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
 
   if (screen === 'setup') {
     return <TournamentSetup
-      onCreated={(t) => {
+      onCreated={() => {
         loadTournaments()
         setScreen('dashboard')
       }}
@@ -115,7 +115,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
                 <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: '#fff' }}>{tournament.name}</p>
                 <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 6px' }}>{new Date(tournament.date).toLocaleDateString('es-AR')}</p>
                 {tournament.winner_team_name && (
-                  <p style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700, margin: 0 }}>🏆 {t.winner_team_name}</p>
+                  <p style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700, margin: 0 }}>🏆 {tournament.winner_team_name}</p>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
