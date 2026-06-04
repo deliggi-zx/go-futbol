@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 type Props = { onLogin: (user: any, org: any) => void }
 
 export default function AuthScreen({ onLogin }: Props) {
-  const [tab, setTab] = useState<'login' | 'register'>('login')
+  const [tab] = useState<'login'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [clubName, setClubName] = useState('')
@@ -66,9 +66,8 @@ export default function AuthScreen({ onLogin }: Props) {
     <div style={styles.container}>
       <img src="/logo.jpg" alt="Go Polo" style={{ width: 160, borderRadius: 14, objectFit: 'contain', marginBottom: 24 }} />
       <div style={styles.card}>
-        <div style={{ display: 'flex', marginBottom: 20 }}>
-          <button style={styles.tab(tab === 'login')} onClick={() => setTab('login')}>Iniciar sesión</button>
-          <button style={styles.tab(tab === 'register')} onClick={() => setTab('register')}>Registrarse</button>
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 16, margin: 0, textAlign: 'center' }}>Acceso administrador</p>
         </div>
 
         {error && <p style={styles.error}>{error}</p>}
@@ -79,19 +78,7 @@ export default function AuthScreen({ onLogin }: Props) {
         <label style={styles.label}>Contraseña</label>
         <input style={styles.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
 
-        {tab === 'register' && (
-          <>
-            <label style={styles.label}>Nombre del club</label>
-            <input style={styles.input} value={clubName} onChange={e => setClubName(e.target.value)} placeholder="Ej: Tribu Polo" />
-
-            <label style={styles.label}>Slug (tu URL: gopolo.app/...)</label>
-            <input style={styles.input} value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/\s/g, '-'))} placeholder="Ej: tribupolo" />
-            <p style={{ color: '#d4a0b0', fontSize: 11, marginBottom: 12, marginTop: -8 }}>
-              Tu URL pública será: gopolo.app/{slug || 'tu-slug'}
-            </p>
-          </>
-        )}
-
+        
         <button style={styles.btn} disabled={loading} onClick={tab === 'login' ? handleLogin : handleRegister}>
           {loading ? 'Cargando...' : tab === 'login' ? 'Entrar' : 'Crear cuenta'}
         </button>

@@ -120,7 +120,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                 <span style={styles.badge(tournament.status)}>{tournament.status === 'finished' ? 'Finalizado' : 'Activo'}</span>
-                <a href={`/${org.slug}`} target="_blank" style={{ color: '#C9A84C', fontSize: 11, textDecoration: 'none' }}>
+                <a href={`https://gopolo.app/${org.slug}`} target="_blank" style={{ color: '#C9A84C', fontSize: 11, textDecoration: 'none' }}>
                   Ver público →
                 </a>
               </div>
