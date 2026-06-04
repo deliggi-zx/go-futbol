@@ -7,8 +7,8 @@ export default function AuthScreen({ onLogin }: Props) {
   const [tab] = useState<'login'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [clubName, setClubName] = useState('')
-  const [slug, setSlug] = useState('')
+  const [clubName] = useState('')
+  const [slug] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
