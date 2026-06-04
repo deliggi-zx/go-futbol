@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-type Props = { onCreated: (t: any) => void }
+type Props = { onCreated: (t: any) => void; orgId?: string }
 
 const emptyTeam = (group = 'A') => ({
   name: '', handicap: 0, group, logo: null as File | null,
@@ -29,7 +29,7 @@ function getGroupsConfig(teamCount: number, format: string): { numGroups: number
   return { numGroups: 4, groupNames: ['A', 'B', 'C', 'D'] }
 }
 
-export default function TournamentSetup({ onCreated }: Props) {
+export default function TournamentSetup({ onCreated, orgId }: Props) {
   const [name, setName] = useState('Tribu Polo 2026')
   const [date, setDate] = useState('')
   const [chukkers, setChukkers] = useState(4)
@@ -105,7 +105,7 @@ export default function TournamentSetup({ onCreated }: Props) {
     try {
       const { data: tournament } = await supabase
         .from('tournaments')
-        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace })
+        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null })
         .select().single()
 
       if (awards.length > 0) {
@@ -121,7 +121,7 @@ export default function TournamentSetup({ onCreated }: Props) {
 
         const { data: savedTeam } = await supabase
           .from('teams')
-          .insert({ tournament_id: tournament.id, name: team.name, handicap: team.handicap, group_name: team.group, logo_url: logoUrl })
+          .insert({ tournament_id: tournament.id, name: team.name, handicap: team.handicap, group_name: team.group, logo_url: logoUrl, org_id: orgId ?? null })
           .select().single()
 
         const validPlayers = team.players.filter(p => p.name.trim())
