@@ -23,6 +23,7 @@ export default function App() {
     const [active, finished] = await Promise.all([
       supabase.from('tournaments').select('*').neq('status', 'finished').order('created_at', { ascending: false }).limit(1).single(),
       supabase.from('tournaments').select('*').eq('status', 'finished').order('finished_at', { ascending: false }),
+      new Promise(resolve => setTimeout(resolve, 2000))
     ])
     setTournament(active.data)
     setHistory(finished.data ?? [])
@@ -38,8 +39,8 @@ export default function App() {
 
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#6B0F2B', gap: 20 }}>
-      <img src="/logo.jpg" alt="Go Polo" style={{ width: 120, height: 120, borderRadius: 16, objectFit: 'contain' }} />
-      <p style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700 }}>Cargando...</p>
+      <img src="/logo.jpg" alt="Go Polo" style={{ width: '85vw', maxWidth: 400, borderRadius: 16, objectFit: 'contain' }} />
+<p style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700 }}>Cargando...</p>
     </div>
   )
 
@@ -85,8 +86,8 @@ export default function App() {
   return (
     <div style={styles.container}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 24, padding: 24 }}>
-        <img src="/logo.jpg" alt="Tribu de Polo" style={{ width: 120, height: 120, borderRadius: 16, objectFit: 'cover' }} />
-        <h1 style={{ color: '#C9A84C', fontWeight: 900, fontSize: 28, margin: 0, textAlign: 'center' }}>TRIBU DE POLO</h1>
+        <img src="/logo.jpg" alt="Go Polo" style={{ width: '85vw', maxWidth: 400, borderRadius: 16, objectFit: 'contain' }} />
+        <h1 style={{ color: '#C9A84C', fontWeight: 900, fontSize: 28, margin: 0, textAlign: 'center' }}>GO POLO</h1>
         <p style={{ color: '#d4a0b0', fontSize: 15, margin: 0, textAlign: 'center' }}>No hay torneo activo</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 300 }}>
           {isAdmin && (
