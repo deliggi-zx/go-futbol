@@ -112,7 +112,6 @@ function AdminPanel() {
 
   return (
     <AdminDashboard
-      user={user}
       org={org}
       onLogout={() => { setUser(null); setOrg(null) }}
     />

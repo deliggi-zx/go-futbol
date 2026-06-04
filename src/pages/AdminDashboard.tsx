@@ -2,16 +2,16 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import TournamentSetup from './TournamentSetup'
 
-type Props = { user: any; org: any; onLogout: () => void }
+type Props = { org: any; onLogout: () => void }
 
-export default function AdminDashboard({ user, org, onLogout }: Props) {
+export default function AdminDashboard({ org, onLogout }: Props) {
   const [tournaments, setTournaments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [screen, setScreen] = useState<'dashboard' | 'setup'>('dashboard')
 
-  useState(() => {
+  useEffect(() => {
     loadTournaments()
-  })
+  }, [])
 
   async function loadTournaments() {
     const { data } = await supabase
