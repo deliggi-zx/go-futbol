@@ -245,7 +245,7 @@ if (showFixtureManager) {
     <div style={styles.container}>
       <div style={{ ...styles.header, position: 'relative', padding: '16px 16px 12px' }}>
         {/* Botón Admin — esquina superior derecha */}
-        <div style={{ position: 'absolute', top: 12, right: 12 }}>
+        <div style={{ position: 'absolute', top: 20, right: 12 }}>
           <button style={styles.adminBtn} onClick={() => {
             const pwd = prompt('Contraseña admin:')
             if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
@@ -254,7 +254,7 @@ if (showFixtureManager) {
         </div>
 
         {/* Logo + título centrados */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 0 }}>
           <img src="/logo.jpg" alt="Logo" style={{ width: 130, height: 130, borderRadius: 14, objectFit: 'contain', marginBottom: 4 }} />
           <h1 style={{ ...styles.title, fontSize: 24, textAlign: 'left', margin: 0, alignSelf: 'flex-start' }}>{tournament.name}</h1>
           <p style={{ ...styles.sub, textAlign: 'left', marginTop: 2, alignSelf: 'flex-start' }}>
