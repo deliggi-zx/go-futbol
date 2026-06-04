@@ -246,7 +246,7 @@ if (showFixtureManager) {
       <div style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/logo.jpg" alt="Logo" style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'cover' }} />
+            <img src="/logo.jpg" alt="Logo" style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'contain' }} />
             <div>
               <h1 style={styles.title}>{tournament.name}</h1>
               <p style={styles.sub}>{new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers</p>

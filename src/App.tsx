@@ -38,7 +38,7 @@ export default function App() {
 
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#6B0F2B', gap: 20 }}>
-      <img src="/logo.jpg" alt="Go Polo" style={{ width: 120, height: 120, borderRadius: 16, objectFit: 'cover' }} />
+      <img src="/logo.jpg" alt="Go Polo" style={{ width: 120, height: 120, borderRadius: 16, objectFit: 'contain' }} />
       <p style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700 }}>Cargando...</p>
     </div>
   )
