@@ -243,40 +243,55 @@ if (showFixtureManager) {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/logo.jpg" alt="Logo" style={{ width: 72, height: 72, borderRadius: 10, objectFit: 'contain' }} />
-            <div>
-              <h1 style={styles.title}>{tournament.name}</h1>
-              <p style={styles.sub}>{new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers</p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
-            <button style={styles.adminBtn} onClick={() => {
-              const pwd = prompt('Contraseña admin:')
-              if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
-              else if (pwd !== null) alert('Incorrecta')
-            }}>{isAdmin ? '✓ Admin' : 'Admin'}</button>
-            {isAdmin && <button style={{ ...styles.adminBtn, fontSize: 11, background: '#dc2626' }} onClick={async () => {
-              if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
-              const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
-              let winnerName = null
-              if (finalMatch) {
-                const hg = getMatchGoals(finalMatch.id, finalMatch.team_home_id)
-                const ag = getMatchGoals(finalMatch.id, finalMatch.team_away_id)
-                const winnerId = hg >= ag ? finalMatch.team_home_id : finalMatch.team_away_id
-                winnerName = teams.find(t => t.id === winnerId)?.name ?? null
-              }
-              await supabase.from('tournaments').update({ status: 'finished', finished_at: new Date().toISOString(), winner_team_name: winnerName }).eq('id', tournament.id)
-              setTab('awards')
-              alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
-              onReset()
-            }}>Finalizar torneo</button>}
-            {isAdmin && <button style={{ ...styles.adminBtn, fontSize: 11 }} onClick={onReset}>Nuevo torneo</button>}
-            {isAdmin && <button style={{ ...styles.adminBtn, fontSize: 11, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>Fixture</button>}
-          </div>
+      <div style={{ ...styles.header, position: 'relative', padding: '16px 16px 12px' }}>
+        {/* Botón Admin — esquina superior derecha */}
+        <div style={{ position: 'absolute', top: 12, right: 12 }}>
+          <button style={styles.adminBtn} onClick={() => {
+            const pwd = prompt('Contraseña admin:')
+            if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
+            else if (pwd !== null) alert('Incorrecta')
+          }}>{isAdmin ? '✓ Admin' : 'Admin'}</button>
         </div>
+
+        {/* Logo + título centrados */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 4 }}>
+          <img src="/logo.jpg" alt="Logo" style={{ width: 110, height: 110, borderRadius: 14, objectFit: 'contain', marginBottom: 10 }} />
+          <h1 style={{ ...styles.title, fontSize: 24, textAlign: 'center', margin: 0 }}>{tournament.name}</h1>
+          <p style={{ ...styles.sub, textAlign: 'center', marginTop: 4 }}>
+            {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers
+          </p>
+        </div>
+
+        {/* Botones admin en fila horizontal */}
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'center' }}>
+            <button
+              style={{ ...styles.adminBtn, flex: 1, background: '#dc2626', fontSize: 12 }}
+              onClick={async () => {
+                if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
+                const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
+                let winnerName = null
+                if (finalMatch) {
+                  const hg = getMatchGoals(finalMatch.id, finalMatch.team_home_id)
+                  const ag = getMatchGoals(finalMatch.id, finalMatch.team_away_id)
+                  const winnerId = hg >= ag ? finalMatch.team_home_id : finalMatch.team_away_id
+                  winnerName = teams.find(t => t.id === winnerId)?.name ?? null
+                }
+                await supabase.from('tournaments').update({ status: 'finished', finished_at: new Date().toISOString(), winner_team_name: winnerName }).eq('id', tournament.id)
+                setTab('awards')
+                alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
+                onReset()
+              }}>
+              Finalizar
+            </button>
+            <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12 }} onClick={onReset}>
+              Nuevo torneo
+            </button>
+            <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>
+              Fixture
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={styles.tabs}>
