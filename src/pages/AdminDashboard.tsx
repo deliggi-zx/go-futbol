@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import TournamentSetup from './TournamentSetup'
 
@@ -108,18 +108,18 @@ export default function AdminDashboard({ org, onLogout }: Props) {
           <p style={{ color: '#d4a0b0', textAlign: 'center', marginTop: 20 }}>Cargando...</p>
         ) : tournaments.length === 0 ? (
           <p style={{ color: '#d4a0b0', textAlign: 'center', marginTop: 20 }}>No hay torneos aún.</p>
-        ) : tournaments.map(t => (
-          <div key={t.id} style={styles.card}>
+        ) : tournaments.map((tournament) => (
+          <div key={tournament.id} style={styles.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: '#fff' }}>{t.name}</p>
-                <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 6px' }}>{new Date(t.date).toLocaleDateString('es-AR')}</p>
-                {t.winner_team_name && (
+                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: '#fff' }}>{tournament.name}</p>
+                <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 6px' }}>{new Date(tournament.date).toLocaleDateString('es-AR')}</p>
+                {tournament.winner_team_name && (
                   <p style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700, margin: 0 }}>🏆 {t.winner_team_name}</p>
                 )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-                <span style={styles.badge(t.status)}>{t.status === 'finished' ? 'Finalizado' : 'Activo'}</span>
+                <span style={styles.badge(tournament.status)}>{tournament.status === 'finished' ? 'Finalizado' : 'Activo'}</span>
                 <a href={`/${org.slug}`} target="_blank" style={{ color: '#C9A84C', fontSize: 11, textDecoration: 'none' }}>
                   Ver público →
                 </a>
