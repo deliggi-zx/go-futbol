@@ -255,7 +255,7 @@ if (showFixtureManager) {
 
         {/* Logo + título centrados */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 0 }}>
-          <img src="/logo.jpg" alt="Logo" style={{ width: 160, height: 160, borderRadius: 14, objectFit: 'contain', marginBottom: 4 }} />
+          <img src="/logo.jpg" alt="Logo" style={{ width: 200, height: 200, borderRadius: 14, objectFit: 'contain', marginBottom: 4 }} />
           <h1 style={{ ...styles.title, fontSize: 24, textAlign: 'left', margin: 0, alignSelf: 'flex-start' }}>{tournament.name}</h1>
           <p style={{ ...styles.sub, textAlign: 'left', marginTop: 2, alignSelf: 'flex-start' }}>
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers
