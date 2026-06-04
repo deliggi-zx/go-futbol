@@ -322,26 +322,21 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           </div>
         ) : (
           <>
-            {!hasVoted ? (
-              <PlayerCard
-                players={allPlayers}
-                onVote={votePlayer}
-                voteCount={getMvpVoteCount}
-              />
-            ) : (
-              <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, border: '1px solid #8B1A3A' }}>
-                <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 12 }}>Votos actuales:</p>
-                {allPlayers.sort((a, b) => getMvpVoteCount(b.id) - getMvpVoteCount(a.id)).map(player => (
-                  <div key={player.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #5A1525' }}>
-                    <span>{player.name}</span>
-                    <span style={{ color: '#C9A84C', fontWeight: 700 }}>{getMvpVoteCount(player.id)} votos</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <PlayerCard
+              players={allPlayers}
+              onVote={votePlayer}
+              onChangeVote={async (_oldId, newId) => {
+                await supabase.from('mvp_votes').delete().eq('match_id', match.id).eq('device_id', deviceId)
+                await supabase.from('mvp_votes').insert({ match_id: match.id, player_id: newId, device_id: deviceId })
+                localStorage.setItem(`voted_match_${match.id}`, 'true')
+                await loadData()
+              }}
+              voteCount={getMvpVoteCount}
+              votedPlayerId={mvpVotes.find(v => v.device_id === deviceId)?.player_id ?? null}
+            />
             {isAdmin && (
               <>
-                <p style={{ ...styles.sectionTitle, marginTop: 16 }}>CONFIRMAR DESTACADO OFICIAL</p>
+                <p style={{ ...styles.sectionTitle, marginTop: 16 }}>CONFIRMAR DESTACADO OFICIAL</p>11
                 {allPlayers.map(player => (
                   <button key={player.id} style={styles.playerBtn(false)} onClick={() => setOfficialMvp(player.id)}>
                     {player.name} ({getMvpVoteCount(player.id)} votos)
