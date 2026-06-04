@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import MatchView from './MatchView'
 import AwardsView from './AwardsView'
+import FixtureManager from './FixtureManager'
 
 type Props = { tournament: any; onReset: () => void; initialMatchId?: string | null }
 
@@ -24,6 +25,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [loading, setLoading] = useState(true)
   const [editingTeam, setEditingTeam] = useState<any>(null)
   const [savingEdit, setSavingEdit] = useState(false)
+  const [showFixtureManager, setShowFixtureManager] = useState(false)
   const isAdmin = localStorage.getItem('tribu_admin') === 'true'
 
   useEffect(() => {
@@ -227,7 +229,15 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
       </div>
     )
   }
-
+if (showFixtureManager) {
+  return <FixtureManager
+    tournament={tournament}
+    matches={matches}
+    teams={teams}
+    onClose={() => setShowFixtureManager(false)}
+    onRefresh={loadData}
+  />
+}
   const groupMatches = matches.filter(m => m.stage === 'group')
   const knockoutMatches = matches.filter(m => m.stage !== 'group')
 
@@ -263,6 +273,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
               alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
               onReset()
             }}>Finalizar torneo</button>}
+            {isAdmin && <button style={{ ...styles.adminBtn, fontSize: 11 }} onClick={onReset}>Nuevo torneo</button>}
+            {isAdmin && <button style={{ ...styles.adminBtn, fontSize: 11, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>Fixture</button>}
           </div>
         </div>
       </div>
