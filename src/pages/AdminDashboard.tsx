@@ -52,7 +52,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
     <div style={styles.container}>
       <div style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.jpg" alt="Go Polo" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain' }} />
+          <img src="/logo.png" alt="Go Polo" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'contain' }} />
           <div>
             <p style={{ margin: 0, fontWeight: 700, color: '#C9A84C', fontSize: 15 }}>{org.name}</p>
             <p style={{ margin: 0, color: '#d4a0b0', fontSize: 11 }}>gopolo.app/{org.slug}</p>

@@ -245,7 +245,7 @@ if (showFixtureManager) {
     <div style={styles.container}>
       <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #8B1A3A' }}>
         {/* Logo de fondo ocupando todo el header */}
-        <img src="/logo.jpg" alt="Logo" style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'center' }} />
+        <img src="/logo.png" alt="Logo" style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'center' }} />
 
         {/* Overlay oscuro para legibilidad */}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(74,11,30,0.3) 0%, rgba(74,11,30,0.75) 60%, rgba(74,11,30,0.95) 100%)' }} />

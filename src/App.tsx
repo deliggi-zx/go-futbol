@@ -47,14 +47,14 @@ function PublicView() {
 
   if (loading) return (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#6B0F2B', gap: 20 }}>
-      <img src="/logo.jpg" alt="Go Polo" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
+      <img src="/logo.png" alt="Go Polo" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
       <p style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700 }}>Cargando...</p>
     </div>
   )
 
   if (!tournament) return (
     <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#6B0F2B', gap: 16 }}>
-      <img src="/logo.jpg" alt="Go Polo" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
+      <img src="/logo.png" alt="Go Polo" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
       <p style={{ color: '#C9A84C', fontSize: 20, fontWeight: 800 }}>GO POLO</p>
       <p style={{ color: '#d4a0b0', fontSize: 15 }}>No hay torneo activo</p>
     </div>

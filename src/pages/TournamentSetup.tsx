@@ -282,7 +282,7 @@ function downloadTemplate() {
   return (
     <div style={styles.container}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <img src="/logo.jpg" alt="Tribu de Polo" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'contain' }} />
+        <img src="/logo.png" alt="Tribu de Polo" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'contain' }} />
       </div>
       <h1 style={styles.title}>GO POLO</h1>
       <p style={styles.sub}>Configuracion del torneo</p>

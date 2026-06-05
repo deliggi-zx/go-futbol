@@ -65,7 +65,7 @@ if (!org) { setError('No se encontró organización asociada'); setLoading(false
 
   return (
     <div style={styles.container}>
-      <img src="/logo.jpg" alt="Go Polo" style={{ width: 160, borderRadius: 14, objectFit: 'contain', marginBottom: 24 }} />
+      <img src="/logo.png" alt="Go Polo" style={{ width: 160, borderRadius: 14, objectFit: 'contain', marginBottom: 24 }} />
       <div style={styles.card}>
         <div style={{ marginBottom: 20 }}>
           <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 16, margin: 0, textAlign: 'center' }}>Acceso administrador</p>
