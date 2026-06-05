@@ -27,6 +27,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [savingEdit, setSavingEdit] = useState(false)
   const [showFixtureManager, setShowFixtureManager] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isScorerAdmin, setIsScorerAdmin] = useState(false)
   const [visitorsNow, setVisitorsNow] = useState(0)
   const [totalVisits, setTotalVisits] = useState(0)
 
@@ -211,7 +212,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   }
 
   if (selectedMatch) {
-    return <MatchView match={selectedMatch} tournament={tournament} onBack={() => { setSelectedMatch(null); loadData() }} isAdmin={isAdmin} />
+    return <MatchView match={selectedMatch} tournament={tournament} onBack={() => { setSelectedMatch(null); loadData() }} isAdmin={isAdmin || isScorerAdmin} />
   }
 
   // Panel edición equipo
@@ -313,6 +314,17 @@ if (showFixtureManager) {
           {/* Botón Admin — esquina superior derecha */}
           <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
+            {!isAdmin && !isScorerAdmin && (
+              <button style={{ ...styles.adminBtn, background: '#8B1A3A' }} onClick={() => {
+                const pwd = prompt('Contraseña de cargador:')
+                if (pwd && pwd === tournament.scorer_password) {
+                  setIsScorerAdmin(true)
+                } else if (pwd !== null) {
+                  alert('Contraseña incorrecta')
+                }
+              }}>Ingresar</button>
+            )}
+            {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: '#166534' }}>✓ Cargador</span>}
             {isAdmin && (
               <div style={{ background: 'rgba(74,11,30,0.85)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#C9A84C', textAlign: 'right' as const }}>
                 <div>🟢 {visitorsNow} conectados</div>

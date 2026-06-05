@@ -41,6 +41,7 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   const [awards, setAwards] = useState<string[]>(DEFAULT_AWARDS)
   const [newAward, setNewAward] = useState('')
   const [saving, setSaving] = useState(false)
+  const [scorerPassword, setScorerPassword] = useState('')
   const [step, setStep] = useState<'config' | 'teams' | 'awards'>('config')
 
   const { groupNames } = getGroupsConfig(teamCount, format)
@@ -162,7 +163,7 @@ function downloadTemplate() {
     try {
       const { data: tournament } = await supabase
         .from('tournaments')
-        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null })
+        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null })
         .select().single()
 
       if (awards.length > 0) {
@@ -308,6 +309,10 @@ function downloadTemplate() {
 
           <label style={{ ...styles.label, marginTop: 16 }}>Chukkers por partido</label>
           <input style={styles.input} type="number" min={1} max={8} value={chukkers} onChange={e => setChukkers(Number(e.target.value))} />
+
+          <label style={{ ...styles.label, marginTop: 16 }}>Contraseña para cargadores de goles</label>
+          <input style={styles.input} value={scorerPassword} onChange={e => setScorerPassword(e.target.value)} placeholder="Ej: polo2026" />
+          <p style={{ color: '#d4a0b0', fontSize: 11, marginTop: 4 }}>Compartila con quienes van a cargar goles el día del torneo</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Cantidad de equipos</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
