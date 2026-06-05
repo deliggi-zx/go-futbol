@@ -12,13 +12,29 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, orgName, slug, plan } = await req.json()
-
-    // Cliente con service role key — acceso total
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Verificar que el caller es superadmin
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401
+      })
+    }
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    if (authError || !user || user.app_metadata?.role !== 'superadmin') {
+      return new Response(JSON.stringify({ error: 'No autorizado' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401
+      })
+    }
+
+    const { email, password, orgName, slug, plan } = await req.json()
 
     // Verificar slug único
     const { data: existing } = await supabaseAdmin
@@ -76,7 +92,7 @@ serve(async (req) => {
       status: 200
     })
 
-  } catch (e) {
+  } catch {
     return new Response(JSON.stringify({ error: 'Error interno' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500

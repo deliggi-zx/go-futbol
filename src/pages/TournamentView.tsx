@@ -31,6 +31,17 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [visitorsNow, setVisitorsNow] = useState(0)
   const [totalVisits, setTotalVisits] = useState(0)
 
+  async function handleScorerLogin() {
+    const pwd = prompt('Contraseña de cargador:')
+    if (pwd === null) return
+    const { data: ok } = await supabase.rpc('verify_scorer_password', {
+      p_tournament_id: tournament.id,
+      p_password: pwd
+    })
+    if (ok) setIsScorerAdmin(true)
+    else alert('Contraseña incorrecta')
+  }
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAdmin(!!session)
@@ -315,14 +326,7 @@ if (showFixtureManager) {
           <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
             {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
             {!isAdmin && !isScorerAdmin && (
-              <button style={{ ...styles.adminBtn, background: '#8B1A3A' }} onClick={() => {
-                const pwd = prompt('Contraseña de cargador:')
-                if (pwd && pwd === tournament.scorer_password) {
-                  setIsScorerAdmin(true)
-                } else if (pwd !== null) {
-                  alert('Contraseña incorrecta')
-                }
-              }}>Ingresar</button>
+              <button style={{ ...styles.adminBtn, background: '#8B1A3A' }} onClick={handleScorerLogin}>Ingresar</button>
             )}
             {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: '#166534' }}>✓ Cargador</span>}
             {isAdmin && (

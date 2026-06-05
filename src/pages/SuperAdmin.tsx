@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const SUPER_PASSWORD = 'Go$Multi$Deportes$!1!2!3#'
+const SUPER_EMAIL = 'superadmin@gopolo.internal'
 
 export default function SuperAdmin() {
-  const [authed, setAuthed] = useState(false)
+  const [session, setSession] = useState<any>(null)
+  const [checking, setChecking] = useState(true)
   const [pwd, setPwd] = useState('')
+  const [loginError, setLoginError] = useState('')
+  const [logging, setLogging] = useState(false)
   const [orgs, setOrgs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [screen, setScreen] = useState<'list' | 'create'>('list')
   const [editingOrg, setEditingOrg] = useState<any>(null)
 
-  // Crear cliente
   const [newName, setNewName] = useState('')
   const [newSlug, setNewSlug] = useState('')
   const [newEmail, setNewEmail] = useState('')
@@ -21,8 +23,42 @@ export default function SuperAdmin() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (authed) loadOrgs()
-  }, [authed])
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.app_metadata?.role === 'superadmin') {
+        setSession(session)
+        loadOrgs()
+      }
+      setChecking(false)
+    })
+  }, [])
+
+  async function handleLogin() {
+    setLogging(true)
+    setLoginError('')
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: SUPER_EMAIL,
+      password: pwd
+    })
+    if (error || !data.user) {
+      setLoginError('Contraseña incorrecta')
+      setLogging(false)
+      return
+    }
+    if (data.user.app_metadata?.role !== 'superadmin') {
+      await supabase.auth.signOut()
+      setLoginError('No autorizado')
+      setLogging(false)
+      return
+    }
+    setSession(data.session)
+    loadOrgs()
+    setLogging(false)
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    setSession(null)
+  }
 
   async function loadOrgs() {
     setLoading(true)
@@ -50,7 +86,7 @@ export default function SuperAdmin() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            'Authorization': `Bearer ${session?.access_token}`
           },
           body: JSON.stringify({
             email: newEmail,
@@ -68,14 +104,12 @@ export default function SuperAdmin() {
       setNewName(''); setNewSlug(''); setNewEmail(''); setNewPassword(''); setNewPlan('per_tournament')
       setScreen('list')
       loadOrgs()
-    } catch (e) {
+    } catch {
       setError('Error al crear el cliente')
     } finally {
       setSaving(false)
     }
   }
-
-      
 
   async function toggleStatus(org: any) {
     const newStatus = org.status === 'active' ? 'suspended' : 'active'
@@ -99,22 +133,28 @@ export default function SuperAdmin() {
     badge: (s: string) => ({ display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: s === 'active' ? '#166534' : '#7f1d1d', color: '#fff' }),
   }
 
-  // Login
-  if (!authed) return (
+  if (checking) return (
+    <div style={{ ...styles.container, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <p style={{ color: '#C9A84C' }}>Verificando sesión...</p>
+    </div>
+  )
+
+  if (!session) return (
     <div style={{ ...styles.container, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ background: '#1e293b', borderRadius: 16, padding: 32, width: '100%', maxWidth: 360, border: '1px solid #334155' }}>
         <p style={{ color: '#C9A84C', fontWeight: 800, fontSize: 20, textAlign: 'center', marginBottom: 24 }}>⚙️ Superadmin</p>
-        <input style={styles.input} type="password" placeholder="Contraseña maestra" value={pwd} onChange={e => setPwd(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && pwd === SUPER_PASSWORD && setAuthed(true)} />
+        {loginError && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{loginError}</p>}
+        <input style={styles.input} type="password" placeholder="Contraseña maestra" value={pwd}
+          onChange={e => setPwd(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !logging && handleLogin()} />
         <button style={{ ...styles.btn('#C9A84C'), width: '100%', color: '#0f172a' }}
-          onClick={() => pwd === SUPER_PASSWORD ? setAuthed(true) : alert('Incorrecta')}>
-          Entrar
+          disabled={logging} onClick={handleLogin}>
+          {logging ? 'Verificando...' : 'Entrar'}
         </button>
       </div>
     </div>
   )
 
-  // Crear cliente
   if (screen === 'create') return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -146,12 +186,14 @@ export default function SuperAdmin() {
     </div>
   )
 
-  // Lista de clientes
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <p style={{ margin: 0, fontWeight: 800, color: '#C9A84C', fontSize: 16 }}>⚙️ Go Polo — Superadmin</p>
-        <button style={styles.btn('#1e40af')} onClick={() => setScreen('create')}>+ Nuevo cliente</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button style={styles.btn('#1e40af')} onClick={() => setScreen('create')}>+ Nuevo cliente</button>
+          <button style={styles.btn('#334155')} onClick={handleLogout}>Salir</button>
+        </div>
       </div>
       <div style={{ padding: 16, maxWidth: 700, margin: '0 auto' }}>
         <p style={{ color: '#64748b', fontSize: 12, marginBottom: 16 }}>{orgs.length} clientes registrados</p>
