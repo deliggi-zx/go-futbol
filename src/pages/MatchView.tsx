@@ -234,7 +234,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       )}
 
       {/* Marcador */}
-      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 4px #8B6914, 0 8px 32px rgba(0,0,0,0.8)` }}>
+      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #8B6914, 0 8px 32px rgba(0,0,0,0.8)`, position: 'relative' as const }}>
+        {/* Esquinas ornamentales */}
+        <div style={{ position: 'absolute' as const, top: 6, left: 6, width: 20, height: 20, borderTop: `2px solid ${gold}`, borderLeft: `2px solid ${gold}`, borderRadius: '4px 0 0 0', zIndex: 2 }} />
+        <div style={{ position: 'absolute' as const, top: 6, right: 6, width: 20, height: 20, borderTop: `2px solid ${gold}`, borderRight: `2px solid ${gold}`, borderRadius: '0 4px 0 0', zIndex: 2 }} />
+        <div style={{ position: 'absolute' as const, bottom: 6, left: 6, width: 20, height: 20, borderBottom: `2px solid ${gold}`, borderLeft: `2px solid ${gold}`, borderRadius: '0 0 0 4px', zIndex: 2 }} />
+        <div style={{ position: 'absolute' as const, bottom: 6, right: 6, width: 20, height: 20, borderBottom: `2px solid ${gold}`, borderRight: `2px solid ${gold}`, borderRadius: '0 0 4px 0', zIndex: 2 }} />
         {/* Marco ornamental top */}
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
         <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '20px 16px 24px' }}>
@@ -292,7 +297,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => addGoal(player.id, match.team_home_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, boxShadow: `inset 0 1px 0 rgba(201,168,76,0.1)` }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, boxShadow: `inset 0 1px 0 rgba(201,168,76,0.2), inset 0 -1px 0 rgba(201,168,76,0.1), 0 2px 8px rgba(0,0,0,0.4)`, outline: `1px solid ${gold}33`, outlineOffset: '-3px' }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>

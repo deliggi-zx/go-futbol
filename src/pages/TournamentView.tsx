@@ -312,7 +312,7 @@ if (showFixtureManager) {
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 16px' }}>
 
           {/* Botón Admin — esquina superior derecha */}
-          <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+          <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
             {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
             {!isAdmin && !isScorerAdmin && (
               <button style={{ ...styles.adminBtn, background: '#8B1A3A' }} onClick={() => {
