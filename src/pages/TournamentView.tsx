@@ -243,55 +243,62 @@ if (showFixtureManager) {
 
   return (
     <div style={styles.container}>
-      <div style={{ ...styles.header, position: 'relative', padding: '16px 16px 12px' }}>
-        {/* Botón Admin — esquina superior derecha */}
-        <div style={{ position: 'absolute', top: 20, right: 12 }}>
-          <button style={styles.adminBtn} onClick={() => {
-            const pwd = prompt('Contraseña admin:')
-            if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
-            else if (pwd !== null) alert('Incorrecta')
-          }}>{isAdmin ? '✓ Admin' : 'Admin'}</button>
-        </div>
+      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #8B1A3A' }}>
+        {/* Logo de fondo ocupando todo el header */}
+        <img src="/logo.jpg" alt="Logo" style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'center' }} />
 
-        {/* Logo + título centrados */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 0 }}>
-          <img src="/logo.jpg" alt="Logo" style={{ width: 200, height: 200, borderRadius: 14, objectFit: 'contain', marginBottom: 4 }} />
-          <h1 style={{ ...styles.title, fontSize: 24, textAlign: 'left', margin: 0, alignSelf: 'flex-start' }}>{tournament.name}</h1>
-          <p style={{ ...styles.sub, textAlign: 'left', marginTop: 2, alignSelf: 'flex-start' }}>
+        {/* Overlay oscuro para legibilidad */}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(74,11,30,0.3) 0%, rgba(74,11,30,0.75) 60%, rgba(74,11,30,0.95) 100%)' }} />
+
+        {/* Contenido sobre el logo */}
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 16px' }}>
+
+          {/* Botón Admin — esquina superior derecha */}
+          <div style={{ position: 'absolute', top: 12, right: 12 }}>
+            <button style={styles.adminBtn} onClick={() => {
+              const pwd = prompt('Contraseña admin:')
+              if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
+              else if (pwd !== null) alert('Incorrecta')
+            }}>{isAdmin ? '✓ Admin' : 'Admin'}</button>
+          </div>
+
+          {/* Título del torneo */}
+          <h1 style={{ ...styles.title, fontSize: 22, margin: '0 0 2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{tournament.name}</h1>
+          <p style={{ ...styles.sub, margin: '0 0 10px', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers
           </p>
-        </div>
 
-        {/* Botones admin en fila horizontal */}
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'center' }}>
-            <button
-              style={{ ...styles.adminBtn, flex: 1, background: '#dc2626', fontSize: 12 }}
-              onClick={async () => {
-                if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
-                const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
-                let winnerName = null
-                if (finalMatch) {
-                  const hg = getMatchGoals(finalMatch.id, finalMatch.team_home_id)
-                  const ag = getMatchGoals(finalMatch.id, finalMatch.team_away_id)
-                  const winnerId = hg >= ag ? finalMatch.team_home_id : finalMatch.team_away_id
-                  winnerName = teams.find(t => t.id === winnerId)?.name ?? null
-                }
-                await supabase.from('tournaments').update({ status: 'finished', finished_at: new Date().toISOString(), winner_team_name: winnerName }).eq('id', tournament.id)
-                setTab('awards')
-                alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
-                onReset()
-              }}>
-              Finalizar
-            </button>
-            <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12 }} onClick={onReset}>
-              Nuevo torneo
-            </button>
-            <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>
-              Fixture
-            </button>
-          </div>
-        )}
+          {/* Botones admin en fila horizontal */}
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                style={{ ...styles.adminBtn, flex: 1, background: '#dc2626', fontSize: 12 }}
+                onClick={async () => {
+                  if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
+                  const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
+                  let winnerName = null
+                  if (finalMatch) {
+                    const hg = getMatchGoals(finalMatch.id, finalMatch.team_home_id)
+                    const ag = getMatchGoals(finalMatch.id, finalMatch.team_away_id)
+                    const winnerId = hg >= ag ? finalMatch.team_home_id : finalMatch.team_away_id
+                    winnerName = teams.find(t => t.id === winnerId)?.name ?? null
+                  }
+                  await supabase.from('tournaments').update({ status: 'finished', finished_at: new Date().toISOString(), winner_team_name: winnerName }).eq('id', tournament.id)
+                  setTab('awards')
+                  alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
+                  onReset()
+                }}>
+                Finalizar
+              </button>
+              <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12 }} onClick={onReset}>
+                Nuevo torneo
+              </button>
+              <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>
+                Fixture
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={styles.tabs}>
