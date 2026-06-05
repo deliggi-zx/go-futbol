@@ -15,8 +15,8 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; s
 function FlapDigit({ value, flipping, highlight = false }: { value: number; flipping: boolean; highlight?: boolean }) {
   return (
     <div style={{
-      width: 64,
-      height: 88,
+      width: 52,
+      height: 72,
       background: highlight ? '#000' : 'linear-gradient(180deg, #f5e6c8 0%, #e8d4a0 45%, #d4b870 50%, #e8d4a0 100%)',
       borderRadius: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
