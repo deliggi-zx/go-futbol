@@ -32,7 +32,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAdmin(!!session)
     })
-  }, [])const isAdmin = localStorage.getItem('tribu_admin') === 'true'
+  }, [])
 
   useEffect(() => {
     loadData().then((loadedMatches) => {
