@@ -10,6 +10,7 @@ export default function AuthScreen({ onLogin }: Props) {
   const [clubName] = useState('')
   const [slug] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
 
   const styles = {
@@ -77,7 +78,12 @@ if (!org) { setError('No se encontró organización asociada'); setLoading(false
         <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" />
 
         <label style={styles.label}>Contraseña</label>
-        <input style={styles.input} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <input style={{ ...styles.input, marginBottom: 0, paddingRight: 40 }} type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" />
+          <button onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#d4a0b0', fontSize: 16, padding: 0 }}>
+            {showPassword ? '🙈' : '👁️'}
+          </button>
+        </div>
 
         
         <button style={styles.btn} disabled={loading} onClick={tab === 'login' ? handleLogin : handleRegister}>
