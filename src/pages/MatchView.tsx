@@ -4,9 +4,9 @@ import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }} />
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: '#8B1A3A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #5A1525 0%, #3A0A15 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
@@ -15,34 +15,38 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; s
 function FlapDigit({ value, flipping, highlight = false }: { value: number; flipping: boolean; highlight?: boolean }) {
   return (
     <div style={{
-      width: 56,
-      height: 76,
-      background: 'linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 45%, #2a2a2a 50%, #3a3a3a 100%)',
-      borderRadius: 8,
+      width: 64,
+      height: 88,
+      background: highlight ? '#000' : 'linear-gradient(180deg, #f5e6c8 0%, #e8d4a0 45%, #d4b870 50%, #e8d4a0 100%)',
+      borderRadius: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: highlight ? 'Arial Black, Arial, sans-serif' : 'Courier New, monospace',
-      fontSize: highlight ? 54 : 52,
-      fontWeight: highlight ? 900 : 700,
-      color: highlight ? '#FFE000' : '#f0ead0',
+      fontFamily: 'Georgia, serif',
+      fontSize: highlight ? 60 : 58,
+      fontWeight: 900,
+      color: highlight ? '#FFE000' : '#6B0F2B',
       position: 'relative' as const,
       overflow: 'hidden' as const,
-      boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.08), inset 0 -2px 4px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.6)',
-      border: '1px solid #555',
+      boxShadow: highlight
+        ? '0 0 20px rgba(255,224,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1)'
+        : 'inset 0 2px 6px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.6)',
+      border: highlight ? '2px solid #FFE000' : '2px solid #B8960C',
       transform: flipping ? 'scaleY(0.1)' : 'scaleY(1)',
       transition: flipping ? 'transform 0.08s ease-in' : 'transform 0.08s ease-out',
     }}>
       <div style={{
         position: 'absolute' as const, top: 0, left: 0, right: 0, height: '50%',
-        background: 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.1) 100%)',
-        borderBottom: '1px solid #222',
-        borderRadius: '8px 8px 0 0',
+        background: highlight
+          ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.1) 100%)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 100%)',
+        borderBottom: highlight ? '2px solid #333' : '2px solid #8B6914',
+        borderRadius: '10px 10px 0 0',
       }} />
       <div style={{
         position: 'absolute' as const,
-        left: 4, right: 4,
+        left: 6, right: 6,
         top: 'calc(50% - 1px)',
         height: 2,
-        background: '#111',
+        background: highlight ? '#333' : '#8B6914',
       }} />
       {value}
     </div>
@@ -69,7 +73,7 @@ function FlapScore({ score, highlight = false }: { score: number; highlight?: bo
   const units = displayScore % 10
 
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div style={{ display: 'flex', gap: 6 }}>
       <FlapDigit value={tens} flipping={flipping} highlight={highlight} />
       <FlapDigit value={units} flipping={flipping} highlight={highlight} />
     </div>
@@ -111,18 +115,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   useEffect(() => {
     loadData()
-
     const channel = supabase
       .channel(`match-${match.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => {
-        ringBell()
-        loadData()
-      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => { ringBell(); loadData() })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_votes', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
 
@@ -181,49 +180,49 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     return mvpVotes.filter(v => v.player_id === playerId).length
   }
 
-  const allPlayers = players
+  const bgPattern = canchMode ? '#0A0005' : '#4A0B1E'
+  const gold = '#C9A84C'
+  const goldLight = '#E8C96A'
+  const darkBg = '#2A0A12'
 
-  const styles = {
-    container: { minHeight: '100vh', background: canchMode ? '#0A0005' : '#6B0F2B', color: '#fff' },
-    header: { background: '#4A0B1E', padding: '16px', borderBottom: '1px solid #8B1A3A' },
-    backBtn: { background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 15, marginBottom: 12, padding: 0 },
-    section: { padding: '0 16px 16px' },
-    sectionTitle: { color: '#d4a0b0', fontSize: 12, fontWeight: 700, letterSpacing: 1, marginBottom: 12, marginTop: 16 },
-    btn: (color: string) => ({ background: color, color: color === '#C9A84C' ? '#4A0B1E' : '#fff', border: 'none', borderRadius: 10, padding: '12px 16px', cursor: 'pointer', fontWeight: 700, fontSize: 14, flex: 1 }),
-    playerBtn: (active: boolean) => ({ background: active ? '#8B1A3A' : '#4A0B1E', border: active ? '1px solid #C9A84C' : '1px solid #8B1A3A', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 14, textAlign: 'left' as const, width: '100%', marginBottom: 6 }),
-    goalRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #5A1525' },
-    input: { background: '#4A0B1E', border: '1px solid #8B1A3A', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 15, width: 60, textAlign: 'center' as const },
-  }
-
-  if (loading) return <div style={{ ...styles.container, display: 'flex', justifyContent: 'center', alignItems: 'center' }}><p style={{ color: '#fff' }}>Cargando...</p></div>
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: bgPattern, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <p style={{ color: gold, fontSize: 16, fontFamily: 'Georgia, serif' }}>Cargando...</p>
+    </div>
+  )
 
   const qrUrl = `${window.location.origin}/?match=${match.id}`
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <button style={styles.backBtn} onClick={onBack}>Volver al fixture</button>
+    <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#3D0A1A', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
+
+      {/* Header */}
+      <div style={{ background: 'rgba(30,5,15,0.95)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+          ← Volver al fixture
+        </button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ color: '#94a3b8', fontSize: 13 }}>
+          <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 2, textTransform: 'uppercase' as const }}>
             {match.stage === 'group' ? `Grupo ${match.group_name}` : match.stage === 'semi' ? 'Semifinal' : 'Final'}
           </span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
-            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: '#334155', border: 'none', borderRadius: 8, padding: '4px 10px', color: '#fff', cursor: 'pointer', fontSize: 14 }}>
-              {soundOn ? '\uD83D\uDD14' : '\uD83D\uDD15'}
+            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: '#2A0A12', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+              {soundOn ? '🔔' : '🔕'}
             </button>
-            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : '#334155', border: 'none', borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : '#fff', cursor: 'pointer', fontSize: 12, fontWeight: canchMode ? 700 : 400 }}>
+            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : '#2A0A12', border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
               {canchMode ? 'Normal' : 'Cancha'}
             </button>
-            <button onClick={() => setShowQR(!showQR)} style={{ background: '#334155', border: 'none', borderRadius: 8, padding: '4px 10px', color: '#fff', cursor: 'pointer', fontSize: 12 }}>
-              {showQR ? 'Cerrar QR' : 'QR'}
+            <button onClick={() => setShowQR(!showQR)} style={{ background: '#2A0A12', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
+              QR
             </button>
           </div>
         </div>
       </div>
 
+      {/* QR */}
       {showQR && (
         <div style={{ background: '#1e293b', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, borderBottom: '1px solid #334155' }}>
           <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Escanea para votar al jugador destacado</p>
@@ -234,96 +233,129 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         </div>
       )}
 
-      {/* Marcador con chapas */}
-      <div style={{ background: canchMode ? '#000' : 'linear-gradient(135deg, #2a2218 0%, #1a1510 100%)', margin: 16, borderRadius: 16, padding: '20px 16px', border: canchMode ? '2px solid #FFE000' : '2px solid #4a3a28', boxShadow: '0 8px 24px rgba(0,0,0,0.6)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={40} />
-            <p style={{ fontSize: 13, fontWeight: 600, color: canchMode ? '#FFE000' : '#f0ead0', margin: 0, textAlign: 'center' as const, letterSpacing: 1 }}>{match.team_home?.name}</p>
-            <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_home?.handicap ?? 0}</p>
-            <FlapScore score={homeGoals} highlight={canchMode} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '0 12px' }}>
-            {match.status === 'live' && (
-              <div style={{ background: '#8B1A2A', color: '#C9A84C', fontSize: 11, fontWeight: 700, letterSpacing: 1, padding: '3px 10px', borderRadius: 20 }}>
-                Ch. {chukker}
-              </div>
-            )}
-            <div style={{ width: 1, height: 40, background: 'linear-gradient(180deg, transparent, #4a3a28, transparent)' }} />
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={40} />
-            <p style={{ fontSize: 13, fontWeight: 600, color: canchMode ? '#FFE000' : '#f0ead0', margin: 0, textAlign: 'center' as const, letterSpacing: 1 }}>{match.team_away?.name}</p>
-            <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_away?.handicap ?? 0}</p>
-            <FlapScore score={awayGoals} highlight={canchMode} />
+      {/* Marcador */}
+      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 4px #8B6914, 0 8px 32px rgba(0,0,0,0.8)` }}>
+        {/* Marco ornamental top */}
+        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
+        <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '20px 16px 24px' }}>
+
+          {/* Equipos y marcador */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Equipo local */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
+              <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_home?.name}</p>
+              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_home?.handicap ?? 0}</p>
+              <FlapScore score={homeGoals} highlight={canchMode} />
+            </div>
+
+            {/* Chukker medallón */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '0 8px' }}>
+              {match.status === 'live' && (
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` }}>
+                  <span style={{ color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>Ch.</span>
+                  <span style={{ color: '#fff', fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{chukker}</span>
+                </div>
+              )}
+              <div style={{ width: 1, height: 30, background: `linear-gradient(180deg, transparent, ${gold}66, transparent)` }} />
+            </div>
+
+            {/* Equipo visitante */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
+              <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_away?.name}</p>
+              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_away?.handicap ?? 0}</p>
+              <FlapScore score={awayGoals} highlight={canchMode} />
+            </div>
           </div>
         </div>
+        {/* Marco ornamental bottom */}
+        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
       </div>
 
-      {/* Registro de goles - solo admin */}
+      {/* Registro de goles */}
       {isAdmin && match.status !== 'finished' && (
-        <div style={styles.section}>
-          <p style={styles.sectionTitle}>REGISTRAR GOL</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-            <span style={{ color: '#94a3b8', fontSize: 14 }}>Chukker:</span>
-            <input style={styles.input} type="number" min={1} max={tournament.chukkers_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
+        <div style={{ padding: '0 16px 16px' }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>REGISTRAR GOL</p>
+
+          {/* Chukker */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
+            <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Chukker:</span>
+            <input style={{ background: '#2A0A12', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+              type="number" min={1} max={tournament.chukkers_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
           </div>
+
+          {/* Jugadores */}
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
-              <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const }}>{match.team_home?.name}</p>
+              <p style={{ color: gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_home?.name}</p>
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
-                <button key={player.id} style={{ ...styles.playerBtn(false), display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => addGoal(player.id, match.team_home_id)} disabled={saving}>
-                  <Avatar url={player.photo_url} name={player.name} size={28} />
-                  <span>{player.name}</span>
+                <button key={player.id} disabled={saving}
+                  onClick={() => addGoal(player.id, match.team_home_id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, boxShadow: `inset 0 1px 0 rgba(201,168,76,0.1)` }}>
+                  <Avatar url={player.photo_url} name={player.name} size={32} />
+                  <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
               ))}
             </div>
-            <div style={{ width: 1, background: '#8B1A3A' }} />
+            <div style={{ width: 1, background: `linear-gradient(180deg, transparent, ${gold}44, transparent)` }} />
             <div style={{ flex: 1 }}>
-              <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const }}>{match.team_away?.name}</p>
+              <p style={{ color: gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_away?.name}</p>
               {players.filter(p => p.team_id === match.team_away_id).map(player => (
-                <button key={player.id} style={{ ...styles.playerBtn(false), display: 'flex', alignItems: 'center', gap: 8 }} onClick={() => addGoal(player.id, match.team_away_id)} disabled={saving}>
-                  <Avatar url={player.photo_url} name={player.name} size={28} />
-                  <span>{player.name}</span>
+                <button key={player.id} disabled={saving}
+                  onClick={() => addGoal(player.id, match.team_away_id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, boxShadow: `inset 0 1px 0 rgba(201,168,76,0.1)` }}>
+                  <Avatar url={player.photo_url} name={player.name} size={32} />
+                  <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
               ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+
+          {/* Botones acción */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             {goals.length > 0 && (
-              <button style={styles.btn('#334155')} onClick={removeLastGoal}>Deshacer</button>
+              <button onClick={removeLastGoal}
+                style={{ flex: 1, background: 'linear-gradient(135deg, #2A0A12, #3D1020)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                Deshacer
+              </button>
             )}
-            <button style={styles.btn('#166534')} onClick={finishMatch}>Finalizar partido</button>
+            <button onClick={finishMatch}
+              style={{ flex: 1, background: 'linear-gradient(135deg, #0d3320, #166534)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Finalizar partido
+            </button>
           </div>
         </div>
       )}
 
       {/* Historial de goles */}
       {goals.length > 0 && (
-        <div style={styles.section}>
-          <p style={styles.sectionTitle}>GOLES</p>
-          {goals.map((g, i) => (
-            <div key={g.id} style={styles.goalRow}>
-              <span style={{ color: '#94a3b8', fontSize: 12 }}>#{i + 1} Ch.{g.chukker}</span>
-              <span style={{ fontWeight: 600 }}>{g.player?.name ?? 'Desconocido'}</span>
-              <span style={{ color: '#94a3b8', fontSize: 12 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
-            </div>
-          ))}
+        <div style={{ padding: '0 16px 16px' }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>GOLES</p>
+          <div style={{ background: 'rgba(30,5,15,0.8)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
+            {goals.map((g, i) => (
+              <div key={g.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif' }}>#{i + 1} Ch.{g.chukker}</span>
+                <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif' }}>{g.player?.name ?? 'Desconocido'}</span>
+                <span style={{ color: '#d4a0b0', fontSize: 12 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* MVP */}
-      <div style={styles.section}>
-        <p style={styles.sectionTitle}>JUGADOR DESTACADO</p>
+      <div style={{ padding: '0 16px 32px' }}>
+        <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>JUGADOR DESTACADO</p>
         {mvpOfficial ? (
-          <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, textAlign: 'center' as const, border: '1px solid #8B1A3A' }}>
+          <div style={{ background: 'rgba(30,5,15,0.9)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
             <p style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 4 }}>Destacado oficial</p>
-            <p style={{ fontSize: 20, fontWeight: 800, color: '#C9A84C' }}>Estrella {mvpOfficial.player?.name}</p>
+            <p style={{ fontSize: 20, fontWeight: 800, color: gold, fontFamily: 'Georgia, serif' }}>⭐ {mvpOfficial.player?.name}</p>
           </div>
         ) : (
           <>
             <PlayerCard
-              players={allPlayers}
+              players={players}
               onVote={votePlayer}
               onChangeVote={async (_oldId, newId) => {
                 await supabase.from('mvp_votes').delete().eq('match_id', match.id).eq('device_id', deviceId)
@@ -336,10 +368,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             />
             {isAdmin && (
               <>
-                <p style={{ ...styles.sectionTitle, marginTop: 16 }}>CONFIRMAR DESTACADO OFICIAL</p>11
-                {allPlayers.map(player => (
-                  <button key={player.id} style={styles.playerBtn(false)} onClick={() => setOfficialMvp(player.id)}>
-                    {player.name} ({getMvpVoteCount(player.id)} votos)
+                <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginTop: 20, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>CONFIRMAR DESTACADO OFICIAL</p>
+                {players.map(player => (
+                  <button key={player.id}
+                    onClick={() => setOfficialMvp(player.id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
+                    <Avatar url={player.photo_url} name={player.name} size={32} />
+                    <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                    <span style={{ color: gold, fontSize: 12 }}>{getMvpVoteCount(player.id)} votos</span>
                   </button>
                 ))}
               </>
