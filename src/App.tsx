@@ -5,6 +5,7 @@ import TournamentSetup from './pages/TournamentSetup'
 import TournamentView from './pages/TournamentView'
 import AuthScreen from './pages/AuthScreen'
 import AdminDashboard from './pages/AdminDashboard'
+import SuperAdmin from './pages/SuperAdmin'
 import './App.css'
 
 // Vista pública por slug
@@ -131,6 +132,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/superadmin" element={<SuperAdmin />} />
         <Route path="/:slug" element={<PublicView />} />
       </Routes>
     </BrowserRouter>
