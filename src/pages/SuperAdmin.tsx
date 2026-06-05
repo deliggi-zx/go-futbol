@@ -114,4 +114,79 @@ export default function SuperAdmin() {
   if (screen === 'create') return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => setScreen('list')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor:
+        <button onClick={() => setScreen('list')} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14 }}>← Volver</button>
+        <p style={{ margin: 0, fontWeight: 700, color: '#C9A84C' }}>Nuevo cliente</p>
+        <div style={{ width: 60 }} />
+      </div>
+      <div style={{ padding: 20, maxWidth: 500, margin: '0 auto' }}>
+        {error && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+        <label style={styles.label}>Nombre del club</label>
+        <input style={styles.input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: La Dolfina" />
+        <label style={styles.label}>Slug (URL)</label>
+        <input style={styles.input} value={newSlug} onChange={e => setNewSlug(e.target.value.toLowerCase().replace(/\s/g, '-'))} placeholder="Ej: ladolfina" />
+        <p style={{ color: '#64748b', fontSize: 11, marginTop: -8, marginBottom: 12 }}>URL pública: gopolo.app/{newSlug || 'slug'}</p>
+        <label style={styles.label}>Email del admin</label>
+        <input style={styles.input} type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="admin@club.com" />
+        <label style={styles.label}>Contraseña provisoria</label>
+        <input style={styles.input} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Ej: club2026" />
+        <label style={styles.label}>Plan</label>
+        <select style={{ ...styles.input, marginBottom: 20 }} value={newPlan} onChange={e => setNewPlan(e.target.value)}>
+          <option value="trial">Trial (1 torneo gratis)</option>
+          <option value="per_tournament">Por torneo</option>
+          <option value="subscription">Suscripción</option>
+        </select>
+        <button style={{ ...styles.btn('#C9A84C'), width: '100%', color: '#0f172a', padding: '14px', fontSize: 15 }} onClick={createClient} disabled={saving}>
+          {saving ? 'Creando...' : '✓ Crear cliente'}
+        </button>
+      </div>
+    </div>
+  )
+
+  // Lista de clientes
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <p style={{ margin: 0, fontWeight: 800, color: '#C9A84C', fontSize: 16 }}>⚙️ Go Polo — Superadmin</p>
+        <button style={styles.btn('#1e40af')} onClick={() => setScreen('create')}>+ Nuevo cliente</button>
+      </div>
+      <div style={{ padding: 16, maxWidth: 700, margin: '0 auto' }}>
+        <p style={{ color: '#64748b', fontSize: 12, marginBottom: 16 }}>{orgs.length} clientes registrados</p>
+        {loading ? <p style={{ color: '#94a3b8', textAlign: 'center' }}>Cargando...</p> : orgs.map(org => (
+          <div key={org.id} style={styles.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: '#fff' }}>{org.name}</p>
+                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 8px' }}>gopolo.app/{org.slug}</p>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                  <span style={styles.badge(org.status)}>{org.status === 'active' ? '✓ Activo' : '✗ Suspendido'}</span>
+                  {editingOrg?.id === org.id ? (
+                    <select style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 6, color: '#fff', padding: '2px 8px', fontSize: 12 }}
+                      value={editingOrg.plan} onChange={e => setEditingOrg({ ...editingOrg, plan: e.target.value })}>
+                      <option value="trial">Trial</option>
+                      <option value="per_tournament">Por torneo</option>
+                      <option value="subscription">Suscripción</option>
+                    </select>
+                  ) : (
+                    <span style={{ background: '#1e40af', color: '#fff', borderRadius: 20, padding: '2px 10px', fontSize: 11, fontWeight: 700 }}>
+                      {org.plan === 'trial' ? 'Trial' : org.plan === 'per_tournament' ? 'Por torneo' : 'Suscripción'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, alignItems: 'flex-end' }}>
+                <button style={styles.btn(org.status === 'active' ? '#7f1d1d' : '#166534')} onClick={() => toggleStatus(org)}>
+                  {org.status === 'active' ? 'Suspender' : 'Activar'}
+                </button>
+                {editingOrg?.id === org.id ? (
+                  <button style={styles.btn('#166534')} onClick={() => savePlan(org)}>Guardar</button>
+                ) : (
+                  <button style={styles.btn('#334155')} onClick={() => setEditingOrg(org)}>Editar plan</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
