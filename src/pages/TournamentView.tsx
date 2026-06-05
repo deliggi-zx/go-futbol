@@ -263,7 +263,7 @@ if (showFixtureManager) {
           </div>
 
           {/* Título del torneo */}
-          <h1 style={{ ...styles.title, fontSize: 22, margin: '0 0 2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{tournament.name}</h1>
+          <h1 style={{ ...styles.title, fontSize: 22, margin: '20px 0 2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{tournament.name}</h1>
           <p style={{ ...styles.sub, margin: '0 0 10px', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers
           </p>
