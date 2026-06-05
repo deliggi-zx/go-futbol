@@ -27,12 +27,63 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [savingEdit, setSavingEdit] = useState(false)
   const [showFixtureManager, setShowFixtureManager] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [visitorsNow, setVisitorsNow] = useState(0)
+  const [totalVisits, setTotalVisits] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAdmin(!!session)
     })
   }, [])
+
+  useEffect(() => {
+    // Generar o recuperar ID anónimo del visitante
+    let visitorId = localStorage.getItem('visitor_id')
+    if (!visitorId) {
+      visitorId = crypto.randomUUID()
+      localStorage.setItem('visitor_id', visitorId)
+    }
+
+    // Registrar visita única
+    async function registerVisit() {
+      const { data: existing } = await supabase
+        .from('tournament_visits')
+        .select('id')
+        .eq('tournament_id', tournament.id)
+        .eq('visitor_id', visitorId)
+        .single()
+      if (!existing) {
+        await supabase.from('tournament_visits').insert({
+          tournament_id: tournament.id,
+          visitor_id: visitorId
+        })
+      }
+      // Cargar total
+      const { count } = await supabase
+        .from('tournament_visits')
+        .select('*', { count: 'exact', head: true })
+        .eq('tournament_id', tournament.id)
+      setTotalVisits(count ?? 0)
+    }
+    registerVisit()
+
+    // Presencia en tiempo real
+    const room = supabase.channel(`presence:${tournament.id}`, {
+      config: { presence: { key: visitorId } }
+    })
+    room
+      .on('presence', { event: 'sync' }, () => {
+        const state = room.presenceState()
+        setVisitorsNow(Object.keys(state).length)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await room.track({ tournament_id: tournament.id })
+        }
+      })
+
+    return () => { supabase.removeChannel(room) }
+  }, [tournament.id])
 
   useEffect(() => {
     loadData().then((loadedMatches) => {
@@ -260,8 +311,14 @@ if (showFixtureManager) {
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 16px' }}>
 
           {/* Botón Admin — esquina superior derecha */}
-          <div style={{ position: 'absolute', top: 12, right: 12 }}>
+          <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
+            {isAdmin && (
+              <div style={{ background: 'rgba(74,11,30,0.85)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#C9A84C', textAlign: 'right' as const }}>
+                <div>🟢 {visitorsNow} conectados</div>
+                <div>👁 {totalVisits} visitas totales</div>
+              </div>
+            )}
           </div>
 
           {/* Título del torneo */}
