@@ -48,6 +48,12 @@ serve(async (req) => {
       })
     }
 
+    // Forzar contraseña y confirmación
+    await supabaseAdmin.auth.admin.updateUserById(userData.user.id, {
+      password,
+      email_confirm: true
+    })
+
     // Crear organización vinculada
     const { error: orgError } = await supabaseAdmin.from('organizations').insert({
       name: orgName,
@@ -55,7 +61,7 @@ serve(async (req) => {
       owner_id: userData.user.id,
       plan,
       status: 'active',
-      tournaments_remaining: plan === 'trial' ? 1 : 0
+      tournaments_remaining: plan === 'trial' ? 1 : plan === 'per_tournament' ? 1 : 0
     })
 
     if (orgError) {
