@@ -241,7 +241,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '20px 16px 24px' }}>
 
           {/* Equipos y marcador */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 8, paddingRight: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             {/* Equipo local */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
@@ -251,13 +251,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             </div>
 
             {/* Chukker medallón */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '0 8px' }}>
-              {match.status === 'live' && (
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 68, flexShrink: 0 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: match.status === 'live' ? `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: match.status === 'live' ? `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` : 'none' }}>
+                {match.status === 'live' && <>
                   <span style={{ color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>Ch.</span>
                   <span style={{ color: '#fff', fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{chukker}</span>
-                </div>
-              )}
+                </>}
+              </div>
               <div style={{ width: 1, height: 30, background: `linear-gradient(180deg, transparent, ${gold}66, transparent)` }} />
             </div>
 
