@@ -28,9 +28,8 @@ export default function AuthScreen({ onLogin }: Props) {
     setError('')
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError('Email o contraseña incorrectos'); setLoading(false); return }
-    const { data: org, error: orgError } = await supabase.from('organizations').select('*').eq('owner_id', data.user.id).single()
-console.log('org:', org, 'error:', orgError, 'user id:', data.user.id)
-if (!org) { setError('No se encontró organización asociada'); setLoading(false); return }
+    const { data: org } = await supabase.from('organizations').select('*').eq('owner_id', data.user.id).single()
+    if (!org) { setError('No se encontró organización asociada'); setLoading(false); return }
     onLogin(data.user, org)
     setLoading(false)
   }

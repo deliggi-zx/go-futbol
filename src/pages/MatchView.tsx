@@ -98,7 +98,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const deviceId = (() => {
     let id = localStorage.getItem('tribu_device_id')
     if (!id) {
-      id = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+      id = crypto.randomUUID()
       localStorage.setItem('tribu_device_id', id)
     }
     return id
