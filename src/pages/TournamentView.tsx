@@ -26,7 +26,13 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [editingTeam, setEditingTeam] = useState<any>(null)
   const [savingEdit, setSavingEdit] = useState(false)
   const [showFixtureManager, setShowFixtureManager] = useState(false)
-  const isAdmin = localStorage.getItem('tribu_admin') === 'true'
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAdmin(!!session)
+    })
+  }, [])const isAdmin = localStorage.getItem('tribu_admin') === 'true'
 
   useEffect(() => {
     loadData().then((loadedMatches) => {
@@ -255,11 +261,7 @@ if (showFixtureManager) {
 
           {/* Botón Admin — esquina superior derecha */}
           <div style={{ position: 'absolute', top: 12, right: 12 }}>
-            <button style={styles.adminBtn} onClick={() => {
-              const pwd = prompt('Contraseña admin:')
-              if (pwd === 'tribu2026') { localStorage.setItem('tribu_admin', 'true'); window.location.reload() }
-              else if (pwd !== null) alert('Incorrecta')
-            }}>{isAdmin ? '✓ Admin' : 'Admin'}</button>
+            {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
           </div>
 
           {/* Título del torneo */}
