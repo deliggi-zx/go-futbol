@@ -44,6 +44,37 @@ export default function SuperAdmin() {
         return
       }
 
+      const response = await fetch(
+        'https://inlmzasbkhngqamduugq.supabase.co/functions/v1/create-user',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            email: newEmail,
+            password: newPassword,
+            orgName: newName,
+            slug: newSlug,
+            plan: newPlan
+          })
+        }
+      )
+
+      const result = await response.json()
+      if (!response.ok) { setError(result.error ?? 'Error al crear el cliente'); setSaving(false); return }
+
+      setNewName(''); setNewSlug(''); setNewEmail(''); setNewPassword(''); setNewPlan('per_tournament')
+      setScreen('list')
+      loadOrgs()
+    } catch (e) {
+      setError('Error al crear el cliente')
+    } finally {
+      setSaving(false)
+    }
+  }
+
       // Crear usuario en Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: newEmail,
