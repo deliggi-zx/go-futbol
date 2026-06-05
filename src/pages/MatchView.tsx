@@ -235,17 +235,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
       {/* Marcador */}
       <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #8B6914, 0 8px 32px rgba(0,0,0,0.8)`, position: 'relative' as const }}>
-        {/* Esquinas ornamentales */}
-        <div style={{ position: 'absolute' as const, top: 6, left: 6, width: 20, height: 20, borderTop: `2px solid ${gold}`, borderLeft: `2px solid ${gold}`, borderRadius: '4px 0 0 0', zIndex: 2 }} />
-        <div style={{ position: 'absolute' as const, top: 6, right: 6, width: 20, height: 20, borderTop: `2px solid ${gold}`, borderRight: `2px solid ${gold}`, borderRadius: '0 4px 0 0', zIndex: 2 }} />
-        <div style={{ position: 'absolute' as const, bottom: 6, left: 6, width: 20, height: 20, borderBottom: `2px solid ${gold}`, borderLeft: `2px solid ${gold}`, borderRadius: '0 0 0 4px', zIndex: 2 }} />
-        <div style={{ position: 'absolute' as const, bottom: 6, right: 6, width: 20, height: 20, borderBottom: `2px solid ${gold}`, borderRight: `2px solid ${gold}`, borderRadius: '0 0 4px 0', zIndex: 2 }} />
+        
         {/* Marco ornamental top */}
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
         <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '20px 16px 24px' }}>
 
           {/* Equipos y marcador */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 8, paddingRight: 8 }}>
             {/* Equipo local */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
