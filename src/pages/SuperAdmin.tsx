@@ -75,34 +75,7 @@ export default function SuperAdmin() {
     }
   }
 
-      // Crear usuario en Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newEmail,
-        password: newPassword,
-        email_confirm: true
-      })
-      if (authError) { setError(authError.message); setSaving(false); return }
-
-      // Crear organización
-      const { error: orgError } = await supabase.from('organizations').insert({
-        name: newName,
-        slug: newSlug,
-        owner_id: authData.user.id,
-        plan: newPlan,
-        status: 'active',
-        tournaments_remaining: newPlan === 'trial' ? 1 : 0
-      })
-      if (orgError) { setError(orgError.message); setSaving(false); return }
-
-      setNewName(''); setNewSlug(''); setNewEmail(''); setNewPassword(''); setNewPlan('per_tournament')
-      setScreen('list')
-      loadOrgs()
-    } catch (e) {
-      setError('Error al crear el cliente')
-    } finally {
-      setSaving(false)
-    }
-  }
+      
 
   async function toggleStatus(org: any) {
     const newStatus = org.status === 'active' ? 'suspended' : 'active'
