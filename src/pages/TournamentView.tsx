@@ -389,7 +389,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             )}
             {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: 'linear-gradient(135deg, #0d3320, #166534)', borderColor: '#4ade8066', color: '#4ade80', cursor: 'default' }}>✓ Cargador</span>}
             {isAdmin && (
-              <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(30,5,15,0.7)', borderRadius: 8, padding: '4px 8px', fontSize: 10, color: `${gold}99`, border: `1px solid ${gold}22` }}>
+              <div style={{ background: 'rgba(30,5,15,0.7)', borderRadius: 8, padding: '4px 8px', fontSize: 10, color: `${gold}99`, border: `1px solid ${gold}22`, position: 'absolute', top: 12, left: 12 }}>
                 <div>🟢 {visitorsNow} conectados</div>
                 <div>👁 {totalVisits} visitas totales</div>
               </div>
