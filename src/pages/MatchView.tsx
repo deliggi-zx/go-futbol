@@ -155,6 +155,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function removeLastGoal() {
     const lastGoal = goals[goals.length - 1]
     if (!lastGoal) return
+    const confirm = window.confirm(`¿Deshacer el último gol de ${lastGoal.player?.name ?? 'jugador desconocido'}?`)
+    if (!confirm) return
     await supabase.from('goals').delete().eq('id', lastGoal.id)
     await loadData()
   }
