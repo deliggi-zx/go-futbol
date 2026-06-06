@@ -165,14 +165,14 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
     if (!shareCardRef.current || !featuredAward) return
     setSharing(true)
     try {
-      const html2canvas = (await import('html2canvas')).default
+      const html2canvas = (await import('html2canvas' as any)).default
       const canvas = await html2canvas(shareCardRef.current, {
         backgroundColor: '#1a0a10',
         scale: 2,
         useCORS: true,
         allowTaint: true,
       })
-      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/png'))
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b: Blob) => resolve(b!), 'image/png'))
       const file = new File([blob], 'gopolo-ganador.png', { type: 'image/png' })
       const shareText = `🏆 ${tournament.name}\n${featuredAward.type.name}: ${featuredAward.award?.winner_name}\n\n${window.location.href}`
 
@@ -461,7 +461,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
           </div>
 
           {/* Botones debajo de la tarjeta */}
-          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', zIndex: 302, display: 'flex', gap: 10, width: '100%', maxWidth: 340 }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', zIndex: 400, display: 'flex', gap: 10, width: '100%', maxWidth: 340 }}>
             <button
               onClick={shareAward}
               disabled={sharing}
@@ -473,6 +473,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
                 fontWeight: 700, fontSize: 15, fontFamily: 'Georgia, serif', letterSpacing: 1,
                 boxShadow: `0 4px 16px rgba(201,168,76,0.3)`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                backdropFilter: 'blur(4px)',
               }}
             >
               {sharing ? 'Preparando...' : '↑ Compartir'}
