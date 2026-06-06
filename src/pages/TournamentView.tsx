@@ -7,13 +7,19 @@ import FixtureManager from './FixtureManager'
 type Props = { tournament: any; onReset: () => void; initialMatchId?: string | null }
 
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.3)' }} />
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: '#8B1A3A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #5A1525 0%, #3A0A15 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.3)' }}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
 }
+
+const gold = '#C9A84C'
+const goldLight = '#E8C96A'
+const darkBg = '#2A0A12'
+const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)'
+const borderGold = `1px solid ${gold}55`
 
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
   const [tab, setTab] = useState<'fixture' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
@@ -49,14 +55,12 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   }, [])
 
   useEffect(() => {
-    // Generar o recuperar ID anónimo del visitante
     let visitorId = localStorage.getItem('visitor_id')
     if (!visitorId) {
       visitorId = crypto.randomUUID()
       localStorage.setItem('visitor_id', visitorId)
     }
 
-    // Registrar visita única
     async function registerVisit() {
       const { data: existing } = await supabase
         .from('tournament_visits')
@@ -70,7 +74,6 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           visitor_id: visitorId
         })
       }
-      // Cargar total
       const { count } = await supabase
         .from('tournament_visits')
         .select('*', { count: 'exact', head: true })
@@ -79,7 +82,6 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     }
     registerVisit()
 
-    // Presencia en tiempo real
     const room = supabase.channel(`presence:${tournament.id}`, {
       config: { presence: { key: visitorId } }
     })
@@ -177,14 +179,12 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     if (!editingTeam) return
     setSavingEdit(true)
     try {
-      // Logo del equipo
       let logoUrl = editingTeam.logo_url
       if (editingTeam._newLogo) {
         logoUrl = await uploadImage(editingTeam._newLogo, `logos/${editingTeam.id}.jpg`)
       }
       await supabase.from('teams').update({ name: editingTeam.name, logo_url: logoUrl }).eq('id', editingTeam.id)
 
-      // Jugadores
       for (const player of editingTeam._players) {
         let photoUrl = player.photo_url
         if (player._newPhoto) {
@@ -202,24 +202,18 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     }
   }
 
+  const groups = [...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort()
+
   const styles = {
-    container: { minHeight: '100vh', background: '#6B0F2B', color: '#fff' },
-    header: { background: '#4A0B1E', padding: '20px 16px', borderBottom: '1px solid #8B1A3A' },
-    title: { fontSize: 22, fontWeight: 800, color: '#C9A84C', margin: 0 },
-    sub: { color: '#d4a0b0', fontSize: 13, marginTop: 4 },
-    tabs: { display: 'flex', background: '#4A0B1E', borderBottom: '1px solid #8B1A3A', overflowX: 'auto' as const },
-    tab: (active: boolean) => ({ flex: 1, padding: '12px 6px', textAlign: 'center' as const, cursor: 'pointer', fontWeight: 600, fontSize: 12, color: active ? '#C9A84C' : '#d4a0b0', borderBottom: active ? '2px solid #C9A84C' : '2px solid transparent', background: 'none', border: 'none', borderBottomStyle: 'solid' as const, borderBottomWidth: active ? 2 : 0, borderBottomColor: active ? '#C9A84C' : 'transparent', whiteSpace: 'nowrap' as const }),
-    content: { padding: 16, maxWidth: 600, margin: '0 auto' },
-    matchCard: { background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 10, cursor: 'pointer', border: '1px solid #8B1A3A' },
-    stageBadge: (stage: string) => ({ display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: stage === 'group' ? '#1e40af' : stage === 'semi' ? '#7e22ce' : '#b45309', color: '#fff', marginBottom: 8 }),
-    scoreRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-    teamName: { flex: 1, fontSize: 15, fontWeight: 600 },
-    score: { fontSize: 28, fontWeight: 800, color: '#C9A84C', minWidth: 40, textAlign: 'center' as const },
-    statusBadge: (s: string) => ({ fontSize: 11, padding: '2px 8px', borderRadius: 20, background: s === 'finished' ? '#166534' : s === 'live' ? '#dc2626' : '#5A1525', color: '#fff' }),
-    tableHeader: { display: 'flex', color: '#d4a0b0', fontSize: 12, padding: '8px 12px', borderBottom: '1px solid #8B1A3A' },
-    tableRow: { display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #5A1525' },
-    adminBtn: { background: '#8B1A3A', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13 },
-    input: { width: '100%', background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const },
+    container: {
+      minHeight: '100vh',
+      background: '#3D0A1A',
+      color: '#fff',
+      backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.02) 40px, rgba(201,168,76,0.02) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.02) 40px, rgba(201,168,76,0.02) 41px)`,
+    },
+    input: { width: '100%', background: darkBg, border: borderGold, borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const, fontFamily: 'Georgia, serif' },
+    adminBtn: { background: 'linear-gradient(135deg, #5A1525, #3A0A15)', color: gold, border: `1px solid ${gold}66`, borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontFamily: 'Georgia, serif', fontWeight: 700 },
+    sectionLabel: { color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' },
   }
 
   if (selectedMatch) {
@@ -230,27 +224,25 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   if (editingTeam) {
     return (
       <div style={styles.container}>
-        <div style={styles.header}>
-          <button onClick={() => setEditingTeam(null)} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 15, marginBottom: 8, padding: 0 }}>← Volver</button>
-          <h2 style={{ ...styles.title, fontSize: 18 }}>Editar equipo</h2>
+        <div style={{ background: 'rgba(30,5,15,0.95)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
+          <button onClick={() => setEditingTeam(null)} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>← Volver</button>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: gold, margin: 0, fontFamily: 'Georgia, serif' }}>Editar equipo</h2>
         </div>
         <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
-          {/* Logo y nombre del equipo */}
-          <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #8B1A3A' }}>
+          <div style={{ background: cardBg, borderRadius: 16, padding: 16, marginBottom: 12, border: borderGold, boxShadow: `0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(201,168,76,0.1)` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
               <Avatar url={editingTeam._newLogo ? URL.createObjectURL(editingTeam._newLogo) : editingTeam.logo_url} name={editingTeam.name} size={56} />
               <div style={{ flex: 1 }}>
                 <input style={{ ...styles.input, marginBottom: 8 }} value={editingTeam.name} onChange={e => setEditingTeam({ ...editingTeam, name: e.target.value })} placeholder="Nombre del equipo" />
-                <label style={{ color: '#d4a0b0', fontSize: 11, display: 'block', marginBottom: 4 }}>Logo del equipo</label>
+                <label style={{ color: '#d4a0b0', fontSize: 11, display: 'block', marginBottom: 4, fontFamily: 'Georgia, serif' }}>Logo del equipo</label>
                 <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 12 }} onChange={e => setEditingTeam({ ...editingTeam, _newLogo: e.target.files?.[0] ?? null })} />
               </div>
             </div>
           </div>
 
-          {/* Jugadores */}
-          <p style={{ color: '#d4a0b0', fontSize: 12, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>JUGADORES</p>
+          <p style={styles.sectionLabel}>JUGADORES</p>
           {editingTeam._players.map((player: any, j: number) => (
-            <div key={player.id} style={{ background: '#4A0B1E', borderRadius: 12, padding: 12, marginBottom: 8, border: '1px solid #8B1A3A' }}>
+            <div key={player.id} style={{ background: cardBg, borderRadius: 12, padding: 12, marginBottom: 8, border: borderGold }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <Avatar url={player._newPhoto ? URL.createObjectURL(player._newPhoto) : player.photo_url} name={player.name} size={44} />
                 <div style={{ flex: 1 }}>
@@ -271,7 +263,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                       setEditingTeam({ ...editingTeam, _players: updated })
                     }} />
                   </div>
-                  <input style={{ ...styles.input, marginBottom: 6 }} placeholder="Resena breve" value={player.bio ?? ''} onChange={e => {
+                  <input style={{ ...styles.input, marginBottom: 6 }} placeholder="Reseña breve" value={player.bio ?? ''} onChange={e => {
                     const updated = [...editingTeam._players]
                     updated[j] = { ...updated[j], bio: e.target.value }
                     setEditingTeam({ ...editingTeam, _players: updated })
@@ -291,63 +283,130 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             </div>
           ))}
 
-          <button onClick={saveTeamEdit} disabled={savingEdit} style={{ background: '#C9A84C', color: '#4A0B1E', fontWeight: 700, fontSize: 16, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 8 }}>
+          <button onClick={saveTeamEdit} disabled={savingEdit} style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, fontSize: 16, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 8, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
             {savingEdit ? 'Guardando...' : '✓ Guardar cambios'}
           </button>
         </div>
       </div>
     )
   }
-if (showFixtureManager) {
-  return <FixtureManager
-    tournament={tournament}
-    matches={matches}
-    teams={teams}
-    onClose={() => setShowFixtureManager(false)}
-    onRefresh={loadData}
-  />
-}
+
+  if (showFixtureManager) {
+    return <FixtureManager
+      tournament={tournament}
+      matches={matches}
+      teams={teams}
+      onClose={() => setShowFixtureManager(false)}
+      onRefresh={loadData}
+    />
+  }
+
   const groupMatches = matches.filter(m => m.stage === 'group')
   const knockoutMatches = matches.filter(m => m.stage !== 'group')
 
+  // Helpers de estilo
+  const goldBar = <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 3 }} />
+
+  function stageBadge(stage: string) {
+    const colors: Record<string, string> = { group: '#1e40af', semi: '#7e22ce', final: '#b45309' }
+    return {
+      display: 'inline-block' as const, padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+      background: colors[stage] ?? '#334155', color: '#fff', fontFamily: 'Georgia, serif', letterSpacing: 1
+    }
+  }
+
+  function statusBadge(s: string) {
+    return {
+      fontSize: 11, padding: '3px 10px', borderRadius: 20, fontWeight: 700, letterSpacing: 1,
+      background: s === 'finished' ? '#166534' : s === 'live' ? '#dc2626' : '#334155', color: '#fff'
+    }
+  }
+
+  function MatchCard({ match, group }: { match: any; group?: string }) {
+    const clickable = isAdmin || isScorerAdmin || match.status !== 'pending'
+    return (
+      <div
+        onClick={() => clickable ? setSelectedMatch(match) : null}
+        style={{
+          borderRadius: 14, marginBottom: 10, overflow: 'hidden',
+          boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)`,
+          cursor: clickable ? 'pointer' : 'default',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={e => { if (clickable) { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px ${gold}88, 0 8px 24px rgba(0,0,0,0.6)` } }}
+        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}
+      >
+        {goldBar}
+        <div style={{ background: cardBg, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={stageBadge(match.stage)}>
+              {match.stage === 'group' ? `Grupo ${group}` : match.stage === 'semi' ? 'Semifinal' : 'Final'}
+            </span>
+            <span style={statusBadge(match.status)}>
+              {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? `🔴 Ch.${match.chukker_current}` : 'Pendiente'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={32} />
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', color: '#fff' }}>{match.team_home?.name ?? 'Por definir'}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 26, fontWeight: 900, color: gold, minWidth: 32, textAlign: 'center' as const, fontFamily: 'Georgia, serif', textShadow: `0 0 12px rgba(201,168,76,0.4)` }}>
+                {match.status !== 'pending' ? getMatchGoals(match.id, match.team_home_id) : '–'}
+              </span>
+              <span style={{ color: '#666', fontSize: 14, fontFamily: 'Georgia, serif' }}>vs</span>
+              <span style={{ fontSize: 26, fontWeight: 900, color: gold, minWidth: 32, textAlign: 'center' as const, fontFamily: 'Georgia, serif', textShadow: `0 0 12px rgba(201,168,76,0.4)` }}>
+                {match.status !== 'pending' ? getMatchGoals(match.id, match.team_away_id) : '–'}
+              </span>
+            </div>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', color: '#fff', textAlign: 'right' as const }}>{match.team_away?.name ?? 'Por definir'}</span>
+              <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={32} />
+            </div>
+          </div>
+        </div>
+        {goldBar}
+      </div>
+    )
+  }
+
   return (
     <div style={styles.container}>
-      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: '1px solid #8B1A3A' }}>
-        {/* Logo de fondo ocupando todo el header */}
+
+      {/* Header con logo */}
+      <div style={{ position: 'relative', overflow: 'hidden', borderBottom: `1px solid ${gold}44` }}>
         <img src="/logo.png" alt="Logo" style={{ width: '100%', display: 'block', objectFit: 'cover', objectPosition: 'center' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(42,10,18,0.3) 0%, rgba(42,10,18,0.75) 60%, rgba(42,10,18,0.97) 100%)' }} />
 
-        {/* Overlay oscuro para legibilidad */}
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(74,11,30,0.3) 0%, rgba(74,11,30,0.75) 60%, rgba(74,11,30,0.95) 100%)' }} />
-
-        {/* Contenido sobre el logo */}
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 16px' }}>
 
-          {/* Botón Admin — esquina superior derecha */}
+          {/* Badges admin / cargador */}
           <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
-            {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block' }}>✓ Admin</span>}
+            {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', cursor: 'default' }}>✓ Admin</span>}
             {!isAdmin && !isScorerAdmin && (
-              <button style={{ ...styles.adminBtn, background: '#8B1A3A' }} onClick={handleScorerLogin}>Ingresar</button>
+              <button style={styles.adminBtn} onClick={handleScorerLogin}>Ingresar</button>
             )}
-            {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: '#166534' }}>✓ Cargador</span>}
+            {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: 'linear-gradient(135deg, #0d3320, #166534)', borderColor: '#4ade8066', color: '#4ade80', cursor: 'default' }}>✓ Cargador</span>}
             {isAdmin && (
-              <div style={{ background: 'rgba(74,11,30,0.85)', borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#C9A84C', textAlign: 'right' as const }}>
+              <div style={{ background: 'rgba(30,5,15,0.85)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: gold, border: `1px solid ${gold}44` }}>
                 <div>🟢 {visitorsNow} conectados</div>
                 <div>👁 {totalVisits} visitas totales</div>
               </div>
             )}
           </div>
 
-          {/* Título del torneo */}
-          <h1 style={{ ...styles.title, fontSize: 22, margin: '60px 0 2px', textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{tournament.name}</h1>
-          <p style={{ ...styles.sub, margin: '0 0 10px', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          {/* Título */}
+          <h1 style={{ fontSize: 22, fontWeight: 900, color: gold, margin: '60px 0 2px', fontFamily: 'Georgia, serif', textShadow: `0 2px 12px rgba(0,0,0,0.9), 0 0 20px rgba(201,168,76,0.3)`, letterSpacing: 1 }}>{tournament.name}</h1>
+          <p style={{ color: '#d4a0b0', fontSize: 13, margin: '0 0 10px', fontFamily: 'Georgia, serif', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} chukkers
           </p>
 
-          {/* Botones admin en fila horizontal */}
+          {/* Botones admin */}
           {isAdmin && (
             <div style={{ display: 'flex', gap: 8 }}>
               <button
-                style={{ ...styles.adminBtn, flex: 1, background: '#dc2626', fontSize: 12 }}
+                style={{ flex: 1, background: 'linear-gradient(135deg, #7f1d1d, #dc2626)', color: '#fff', border: '1px solid #ef444466', borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif' }}
                 onClick={async () => {
                   if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
                   const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
@@ -365,10 +424,10 @@ if (showFixtureManager) {
                 }}>
                 Finalizar
               </button>
-              <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12 }} onClick={onReset}>
+              <button style={{ flex: 1, ...styles.adminBtn, fontSize: 12 }} onClick={onReset}>
                 Nuevo torneo
               </button>
-              <button style={{ ...styles.adminBtn, flex: 1, fontSize: 12, background: '#1e40af' }} onClick={() => setShowFixtureManager(true)}>
+              <button style={{ flex: 1, background: 'linear-gradient(135deg, #1e3a8a, #1e40af)', color: '#93c5fd', border: '1px solid #3b82f666', borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif' }} onClick={() => setShowFixtureManager(true)}>
                 Fixture
               </button>
             </div>
@@ -376,73 +435,54 @@ if (showFixtureManager) {
         </div>
       </div>
 
-      <div style={styles.tabs}>
+      {/* Tabs */}
+      <div style={{ display: 'flex', background: 'rgba(30,5,15,0.95)', borderBottom: `1px solid ${gold}44`, overflowX: 'auto' as const }}>
         {(['fixture', 'standings', 'stats', 'teams', 'awards'] as const).map(t => (
-          <button key={t} style={styles.tab(tab === t)} onClick={() => setTab(t)}>
+          <button key={t} onClick={() => setTab(t)} style={{
+            flex: 1, padding: '13px 6px', textAlign: 'center' as const, cursor: 'pointer',
+            fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1,
+            color: tab === t ? gold : '#d4a0b0',
+            background: tab === t ? `rgba(201,168,76,0.08)` : 'none',
+            border: 'none',
+            borderBottom: tab === t ? `2px solid ${gold}` : '2px solid transparent',
+            whiteSpace: 'nowrap' as const,
+            transition: 'color 0.2s',
+          }}>
             {t === 'fixture' ? 'Fixture' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Stats' : t === 'teams' ? 'Equipos' : 'Premios'}
           </button>
         ))}
       </div>
 
-      <div style={styles.content}>
-        {loading ? <p style={{ color: '#94a3b8', textAlign: 'center', marginTop: 40 }}>Cargando...</p> : (
+      {/* Contenido */}
+      <div style={{ padding: 16, maxWidth: 600, margin: '0 auto' }}>
+        {loading ? (
+          <p style={{ color: gold, textAlign: 'center', marginTop: 40, fontFamily: 'Georgia, serif' }}>Cargando...</p>
+        ) : (
 
+          /* ── FIXTURE ── */
           tab === 'fixture' ? (
             <>
-              {[...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort().map(group => (
+              {groups.map(group => (
                 <div key={group}>
-                  <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 8 }}>GRUPO {group}</p>
+                  <p style={styles.sectionLabel}>GRUPO {group}</p>
                   {groupMatches.filter(m => m.group_name === group).map(match => (
-                    <div key={match.id} style={styles.matchCard} onClick={() => isAdmin || match.status !== 'pending' ? setSelectedMatch(match) : null}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={styles.stageBadge('group')}>Grupo {group}</span>
-                        <span style={styles.statusBadge(match.status)}>{match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? `🔴 Ch.${match.chukker_current}` : 'Pendiente'}</span>
-                      </div>
-                      <div style={styles.scoreRow}>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={28} />
-                          <span style={styles.teamName}>{match.team_home?.name}</span>
-                        </div>
-                        <span style={styles.score}>{match.status !== 'pending' ? getMatchGoals(match.id, match.team_home_id) : '-'}</span>
-                        <span style={{ color: '#94a3b8' }}>vs</span>
-                        <span style={styles.score}>{match.status !== 'pending' ? getMatchGoals(match.id, match.team_away_id) : '-'}</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                          <span style={{ ...styles.teamName, textAlign: 'right' as const }}>{match.team_away?.name}</span>
-                          <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={28} />
-                        </div>
-                      </div>
-                    </div>
+                    <MatchCard key={match.id} match={match} group={group} />
                   ))}
                 </div>
               ))}
+
               {knockoutMatches.length > 0 && (
                 <>
-                  <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginTop: 16, marginBottom: 8 }}>ELIMINACIÓN DIRECTA</p>
+                  <p style={styles.sectionLabel}>ELIMINACIÓN DIRECTA</p>
                   {knockoutMatches.map(match => (
-                    <div key={match.id} style={styles.matchCard} onClick={() => setSelectedMatch(match)}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={styles.stageBadge(match.stage)}>{match.stage === 'semi' ? 'Semifinal' : 'Final'}</span>
-                        <span style={styles.statusBadge(match.status)}>{match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? '🔴 En vivo' : 'Pendiente'}</span>
-                      </div>
-                      <div style={styles.scoreRow}>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={28} />
-                          <span style={styles.teamName}>{match.team_home?.name ?? 'Por definir'}</span>
-                        </div>
-                        <span style={styles.score}>{match.status !== 'pending' ? getMatchGoals(match.id, match.team_home_id) : '-'}</span>
-                        <span style={{ color: '#94a3b8' }}>vs</span>
-                        <span style={styles.score}>{match.status !== 'pending' ? getMatchGoals(match.id, match.team_away_id) : '-'}</span>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                          <span style={{ ...styles.teamName, textAlign: 'right' as const }}>{match.team_away?.name ?? 'Por definir'}</span>
-                          <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={28} />
-                        </div>
-                      </div>
-                    </div>
+                    <MatchCard key={match.id} match={match} />
                   ))}
                 </>
               )}
-              {isAdmin && knockoutMatches.length === 0 && groupMatches.every(m => m.status === 'finished') && (
-                <button style={{ background: '#C9A84C', color: '#4A0B1E', fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16 }}
+
+              {isAdmin && knockoutMatches.length === 0 && groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished') && (
+                <button
+                  style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 15, letterSpacing: 1 }}
                   onClick={async () => {
                     const standingsA = getStandings('A')
                     const standingsB = getStandings('B')
@@ -455,8 +495,10 @@ if (showFixtureManager) {
                   Generar semifinales →
                 </button>
               )}
+
               {isAdmin && knockoutMatches.filter(m => m.stage === 'semi').every(m => m.status === 'finished') && knockoutMatches.filter(m => m.stage === 'semi').length === 2 && !knockoutMatches.find(m => m.stage === 'final') && (
-                <button style={{ background: '#C9A84C', color: '#4A0B1E', fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16 }}
+                <button
+                  style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 15, letterSpacing: 1 }}
                   onClick={async () => {
                     const semis = knockoutMatches.filter(m => m.stage === 'semi')
                     const winners = semis.map(m => {
@@ -471,96 +513,109 @@ if (showFixtureManager) {
                 </button>
               )}
             </>
+
+          /* ── POSICIONES ── */
           ) : tab === 'standings' ? (
             <>
-              {['A', 'B'].map(group => {
+              {groups.map(group => {
                 const standing = getStandings(group)
                 return (
                   <div key={group} style={{ marginBottom: 24 }}>
-                    <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 8 }}>GRUPO {group}</p>
-                    <div style={{ background: '#4A0B1E', borderRadius: 12, overflow: 'hidden', border: '1px solid #8B1A3A' }}>
-                      <div style={styles.tableHeader}>
-                        <span style={{ flex: 1 }}>Equipo</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>PJ</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>G</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>E</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>P</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>GF</span>
-                        <span style={{ width: 28, textAlign: 'center' }}>GC</span>
-                        <span style={{ width: 36, textAlign: 'center', color: '#C9A84C' }}>PTS</span>
-                      </div>
-                      {standing.map((team, i) => (
-                        <div key={team.id} style={{ ...styles.tableRow, background: i < 2 ? 'rgba(201,168,76,0.08)' : 'transparent' }}>
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Avatar url={team.logo_url} name={team.name} size={24} />
-                            <span style={{ fontWeight: i < 2 ? 700 : 400 }}>{i < 2 && '→ '}{team.name}</span>
-                          </div>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.pj}</span>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.w}</span>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.d}</span>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.l}</span>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.gf}</span>
-                          <span style={{ width: 28, textAlign: 'center', color: '#d4a0b0' }}>{team.gc}</span>
-                          <span style={{ width: 36, textAlign: 'center', fontWeight: 800, color: '#C9A84C' }}>{team.pts}</span>
+                    <p style={styles.sectionLabel}>GRUPO {group}</p>
+                    <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                      {goldBar}
+                      <div style={{ background: cardBg }}>
+                        <div style={{ display: 'flex', color: '#d4a0b0', fontSize: 12, padding: '8px 14px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                          <span style={{ flex: 1 }}>Equipo</span>
+                          {['PJ','G','E','P','GF','GC'].map(h => <span key={h} style={{ width: 28, textAlign: 'center' as const }}>{h}</span>)}
+                          <span style={{ width: 36, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>PTS</span>
                         </div>
-                      ))}
+                        {standing.map((team, i) => (
+                          <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, background: i < 2 ? `rgba(201,168,76,0.07)` : 'transparent' }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Avatar url={team.logo_url} name={team.name} size={26} />
+                              <span style={{ fontWeight: i < 2 ? 700 : 400, fontFamily: 'Georgia, serif', fontSize: 13 }}>{i < 2 ? '→ ' : ''}{team.name}</span>
+                            </div>
+                            {[team.pj, team.w, team.d, team.l, team.gf, team.gc].map((val, idx) => (
+                              <span key={idx} style={{ width: 28, textAlign: 'center' as const, color: '#d4a0b0', fontSize: 13 }}>{val}</span>
+                            ))}
+                            <span style={{ width: 36, textAlign: 'center' as const, fontWeight: 900, color: gold, fontSize: 15, fontFamily: 'Georgia, serif' }}>{team.pts}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {goldBar}
                     </div>
                   </div>
                 )
               })}
             </>
+
+          /* ── STATS ── */
           ) : tab === 'stats' ? (
             <>
-              <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 12 }}>GOLEADORES</p>
-              <div style={{ background: '#4A0B1E', borderRadius: 12, overflow: 'hidden', marginBottom: 24, border: '1px solid #8B1A3A' }}>
-                {getTopScorers().length === 0
-                  ? <p style={{ color: '#d4a0b0', padding: 16, textAlign: 'center' }}>Sin goles registrados</p>
-                  : getTopScorers().map((s, i) => (
-                    <div key={s.player.id} style={{ ...styles.tableRow, justifyContent: 'space-between' }}>
-                      <span style={{ color: '#d4a0b0', width: 24 }}>{i + 1}</span>
-                      <Avatar url={s.player.photo_url} name={s.player.name} size={32} />
-                      <span style={{ flex: 1, fontWeight: i === 0 ? 700 : 400, marginLeft: 8 }}>{s.player.name}</span>
-                      <span style={{ color: '#d4a0b0', fontSize: 12 }}>{teams.find(t => t.id === s.player.team_id)?.name}</span>
-                      <span style={{ color: '#C9A84C', fontWeight: 800, marginLeft: 12, fontSize: 18 }}>{s.goals}</span>
-                    </div>
-                  ))
-                }
+              <p style={styles.sectionLabel}>GOLEADORES</p>
+              <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                {goldBar}
+                <div style={{ background: cardBg }}>
+                  {getTopScorers().length === 0
+                    ? <p style={{ color: '#d4a0b0', padding: 20, textAlign: 'center', fontFamily: 'Georgia, serif' }}>Sin goles registrados</p>
+                    : getTopScorers().map((s, i) => (
+                      <div key={s.player.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, gap: 10 }}>
+                        <span style={{ color: i === 0 ? gold : '#d4a0b0', width: 22, fontFamily: 'Georgia, serif', fontWeight: i === 0 ? 900 : 400 }}>{i + 1}</span>
+                        <Avatar url={s.player.photo_url} name={s.player.name} size={34} />
+                        <span style={{ flex: 1, fontWeight: i === 0 ? 800 : 400, fontFamily: 'Georgia, serif', marginLeft: 4 }}>{s.player.name}</span>
+                        <span style={{ color: '#d4a0b0', fontSize: 12, fontFamily: 'Georgia, serif' }}>{teams.find(t => t.id === s.player.team_id)?.name}</span>
+                        <span style={{ color: gold, fontWeight: 900, fontSize: 20, fontFamily: 'Georgia, serif', marginLeft: 10, textShadow: `0 0 10px rgba(201,168,76,0.4)` }}>{s.goals}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+                {goldBar}
               </div>
             </>
+
+          /* ── EQUIPOS ── */
           ) : tab === 'teams' ? (
             <>
-              <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 12 }}>EQUIPOS</p>
+              <p style={styles.sectionLabel}>EQUIPOS</p>
               {teams.map(team => {
                 const teamPlayers = players.filter(p => p.team_id === team.id)
                 return (
-                  <div key={team.id} style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #8B1A3A' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <Avatar url={team.logo_url} name={team.name} size={44} />
-                        <div>
-                          <p style={{ fontWeight: 700, fontSize: 16, margin: 0, color: '#fff' }}>{team.name}</p>
-                          <p style={{ color: '#d4a0b0', fontSize: 12, margin: 0 }}>Grupo {team.group_name} · H: {team.handicap}</p>
+                  <div key={team.id} style={{ borderRadius: 14, marginBottom: 12, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                    {goldBar}
+                    <div style={{ background: cardBg, padding: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <Avatar url={team.logo_url} name={team.name} size={48} />
+                          <div>
+                            <p style={{ fontWeight: 800, fontSize: 16, margin: 0, color: '#fff', fontFamily: 'Georgia, serif' }}>{team.name}</p>
+                            <p style={{ color: '#d4a0b0', fontSize: 12, margin: '2px 0 0', fontFamily: 'Georgia, serif' }}>Grupo {team.group_name} · H: {team.handicap}</p>
+                          </div>
                         </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => setEditingTeam({ ...team, _players: teamPlayers.map(p => ({ ...p, _newPhoto: null })), _newLogo: null })}
+                            style={{ background: 'linear-gradient(135deg, #5A1525, #3A0A15)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '6px 12px', color: gold, cursor: 'pointer', fontSize: 12, fontFamily: 'Georgia, serif' }}>
+                            ✏️ Editar
+                          </button>
+                        )}
                       </div>
-                      {isAdmin && (
-                        <button onClick={() => setEditingTeam({ ...team, _players: teamPlayers.map(p => ({ ...p, _newPhoto: null })), _newLogo: null })}
-                          style={{ background: '#8B1A3A', border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: 12 }}>
-                          ✏️ Editar
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
+                        {teamPlayers.map(player => (
+                          <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(201,168,76,0.08)', border: `1px solid ${gold}33`, borderRadius: 20, padding: '4px 12px 4px 4px' }}>
+                            <Avatar url={player.photo_url} name={player.name} size={28} />
+                            <span style={{ fontSize: 13, color: '#fff', fontFamily: 'Georgia, serif' }}>{player.name}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 8 }}>
-                      {teamPlayers.map(player => (
-                        <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#6B0F2B', borderRadius: 20, padding: '4px 10px 4px 4px' }}>
-                          <Avatar url={player.photo_url} name={player.name} size={28} />
-                          <span style={{ fontSize: 13, color: '#fff' }}>{player.name}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {goldBar}
                   </div>
                 )
               })}
             </>
+
+          /* ── PREMIOS ── */
           ) : (
             <AwardsView tournament={tournament} isAdmin={isAdmin} />
           )
