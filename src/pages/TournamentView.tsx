@@ -382,14 +382,14 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 16px' }}>
 
           {/* Badges admin / cargador */}
-          <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+          <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
             {isAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', cursor: 'default' }}>✓ Admin</span>}
             {!isAdmin && !isScorerAdmin && (
               <button style={styles.adminBtn} onClick={handleScorerLogin}>Ingresar</button>
             )}
             {isScorerAdmin && <span style={{ ...styles.adminBtn, display: 'inline-block', background: 'linear-gradient(135deg, #0d3320, #166534)', borderColor: '#4ade8066', color: '#4ade80', cursor: 'default' }}>✓ Cargador</span>}
             {isAdmin && (
-              <div style={{ background: 'rgba(30,5,15,0.85)', borderRadius: 8, padding: '5px 10px', fontSize: 11, color: gold, border: `1px solid ${gold}44` }}>
+              <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(30,5,15,0.7)', borderRadius: 8, padding: '4px 8px', fontSize: 10, color: `${gold}99`, border: `1px solid ${gold}22` }}>
                 <div>🟢 {visitorsNow} conectados</div>
                 <div>👁 {totalVisits} visitas totales</div>
               </div>
