@@ -400,7 +400,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
       {/* Pantalla festiva de premio */}
       {featuredAward && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24, flexDirection: 'column', gap: 16 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', zIndex: 300, padding: '24px 24px 40px', flexDirection: 'column', gap: 16, overflowY: 'auto' }}
           onClick={() => setFeaturedAward(null)}
         >
           {/* Canvas confeti */}
