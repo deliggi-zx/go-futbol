@@ -389,7 +389,7 @@ if (showFixtureManager) {
 
           tab === 'fixture' ? (
             <>
-              {['A', 'B'].map(group => (
+              {[...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort().map(group => (
                 <div key={group}>
                   <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 13, letterSpacing: 1, marginBottom: 8 }}>GRUPO {group}</p>
                   {groupMatches.filter(m => m.group_name === group).map(match => (

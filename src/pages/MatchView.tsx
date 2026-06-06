@@ -21,7 +21,7 @@ function FlapDigit({ value, flipping, highlight = false }: { value: number; flip
       borderRadius: 10,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: 'Georgia, serif',
-      fontSize: highlight ? 60 : 58,
+      fontSize: highlight ? 48 : 46,
       fontWeight: 900,
       color: highlight ? '#FFE000' : '#6B0F2B',
       position: 'relative' as const,
@@ -98,7 +98,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const deviceId = (() => {
     let id = localStorage.getItem('tribu_device_id')
     if (!id) {
-      id = crypto.randomUUID()
+      id = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
       localStorage.setItem('tribu_device_id', id)
     }
     return id
