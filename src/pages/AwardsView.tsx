@@ -3,6 +3,12 @@ import { supabase } from '../lib/supabase'
 
 type Props = { tournament: any; isAdmin: boolean }
 
+const gold = '#C9A84C'
+const goldLight = '#E8C96A'
+const darkBg = '#2A0A12'
+const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)'
+const borderGold = `1px solid ${gold}55`
+
 export default function AwardsView({ tournament, isAdmin }: Props) {
   const [awardTypes, setAwardTypes] = useState<any[]>([])
   const [awards, setAwards] = useState<any[]>([])
@@ -16,19 +22,16 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null)
   const [featuredAward, setFeaturedAward] = useState<any>(null)
   const [innerTab, setInnerTab] = useState<'awards' | 'gallery'>('awards')
+  const [sharing, setSharing] = useState(false)
   const confettiRef = useRef<HTMLCanvasElement>(null)
   const animFrameRef = useRef<number>(0)
+  const shareCardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { loadData() }, [tournament.id])
 
   useEffect(() => {
-    loadData()
-  }, [tournament.id])
-
-  useEffect(() => {
-    if (featuredAward) {
-      startConfetti()
-    } else {
-      stopConfetti()
-    }
+    if (featuredAward) startConfetti()
+    else stopConfetti()
     return () => stopConfetti()
   }, [featuredAward])
 
@@ -37,13 +40,10 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
-
     const particles: any[] = []
     const colors = ['#75AADB', '#FFFFFF', '#C9A84C', '#75AADB', '#FFFFFF', '#75AADB']
-
     for (let i = 0; i < 120; i++) {
       particles.push({
         x: Math.random() * canvas.width,
@@ -59,7 +59,6 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
         wobblePos: Math.random() * Math.PI * 2,
       })
     }
-
     function draw() {
       if (!ctx || !canvas) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -68,10 +67,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
         p.angle += p.spin
         p.wobblePos += p.wobbleSpeed
         p.x += Math.sin(p.wobblePos) * 1.5
-        if (p.y > canvas.height) {
-          p.y = -20
-          p.x = Math.random() * canvas.width
-        }
+        if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width }
         ctx.save()
         ctx.translate(p.x, p.y)
         ctx.rotate(p.angle)
@@ -165,118 +161,182 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
     await loadData()
   }
 
-  const styles = {
-    innerTab: (active: boolean) => ({
-      flex: 1, padding: '10px 8px', textAlign: 'center' as const, cursor: 'pointer',
-      fontWeight: 600, fontSize: 13, color: active ? '#C9A84C' : '#d4a0b0',
-      background: active ? 'rgba(201,168,76,0.1)' : 'none',
-      border: 'none', borderRadius: 8, margin: 2,
-    }),
+  async function shareAward() {
+    if (!shareCardRef.current || !featuredAward) return
+    setSharing(true)
+    try {
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: '#1a0a10',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+      })
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/png'))
+      const file = new File([blob], 'gopolo-ganador.png', { type: 'image/png' })
+      const shareText = `🏆 ${tournament.name}\n${featuredAward.type.name}: ${featuredAward.award?.winner_name}\n\n${window.location.href}`
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], text: shareText })
+      } else if (navigator.share) {
+        await navigator.share({ title: `Go Polo · ${tournament.name}`, text: shareText, url: window.location.href })
+      } else {
+        // Fallback: descargar imagen
+        const a = document.createElement('a')
+        a.href = canvas.toDataURL('image/png')
+        a.download = 'gopolo-ganador.png'
+        a.click()
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') alert('No se pudo compartir')
+    } finally {
+      setSharing(false)
+    }
   }
 
-  if (loading) return <p style={{ color: '#d4a0b0', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
+  const goldBar = <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 3 }} />
+
+  if (loading) return <p style={{ color: gold, textAlign: 'center', marginTop: 40, fontFamily: 'Georgia, serif' }}>Cargando...</p>
 
   return (
     <div>
       {/* Sub-tabs */}
-      <div style={{ display: 'flex', background: '#4A0B1E', borderRadius: 10, margin: '0 0 16px', padding: 4 }}>
-        <button style={styles.innerTab(innerTab === 'awards')} onClick={() => setInnerTab('awards')}>
-          Premios {awards.length > 0 && `(${awards.length}/${awardTypes.length})`}
-        </button>
-        <button style={styles.innerTab(innerTab === 'gallery')} onClick={() => setInnerTab('gallery')}>
-          Grandes momentos {gallery.length > 0 && `(${gallery.length})`}
-        </button>
+      <div style={{ display: 'flex', background: 'rgba(30,5,15,0.8)', borderRadius: 12, margin: '0 0 16px', padding: 4, border: borderGold }}>
+        {(['awards', 'gallery'] as const).map(t => (
+          <button key={t} onClick={() => setInnerTab(t)} style={{
+            flex: 1, padding: '10px 8px', textAlign: 'center' as const, cursor: 'pointer',
+            fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1,
+            color: innerTab === t ? gold : '#d4a0b0',
+            background: innerTab === t ? `rgba(201,168,76,0.1)` : 'none',
+            border: 'none', borderRadius: 8,
+            transition: 'color 0.2s',
+          }}>
+            {t === 'awards'
+              ? `Premios${awards.length > 0 ? ` (${awards.length}/${awardTypes.length})` : ''}`
+              : `Grandes momentos${gallery.length > 0 ? ` (${gallery.length})` : ''}`}
+          </button>
+        ))}
       </div>
 
       {innerTab === 'awards' && (
         <>
           {awardTypes.length === 0 ? (
-            <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 24, textAlign: 'center', border: '1px solid #8B1A3A' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 14 }}>No se definieron premios para este torneo.</p>
+            <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
+              {goldBar}
+              <div style={{ background: cardBg, padding: 24, textAlign: 'center' }}>
+                <p style={{ color: '#d4a0b0', fontSize: 14, fontFamily: 'Georgia, serif' }}>No se definieron premios para este torneo.</p>
+              </div>
+              {goldBar}
             </div>
           ) : (
             <>
-              {/* Banner campeon */}
+              {/* Banner campeón */}
               {getAward(awardTypes[0]?.id)?.winner_name && (
                 <div
                   onClick={() => setFeaturedAward({ type: awardTypes[0], award: getAward(awardTypes[0].id) })}
-                  style={{ background: 'linear-gradient(135deg, #4A0B1E, #8B1A3A)', borderRadius: 16, padding: 24, marginBottom: 20, textAlign: 'center', border: '2px solid #C9A84C', cursor: 'pointer' }}>
-                  <p style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700, letterSpacing: 2, margin: '0 0 8px' }}>CAMPEON</p>
-                  {getAward(awardTypes[0].id)?.photo_url && (
-                    <img src={getAward(awardTypes[0].id).photo_url} alt="Campeon"
-                      style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', border: '3px solid #C9A84C', marginBottom: 12 }} />
-                  )}
-                  <p style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: 0 }}>
-                    {getAward(awardTypes[0].id).winner_name}
-                  </p>
-                  <p style={{ color: '#C9A84C', fontSize: 12, margin: '8px 0 0', opacity: 0.7 }}>Toca para celebrar</p>
+                  style={{
+                    borderRadius: 16, marginBottom: 20, overflow: 'hidden', cursor: 'pointer',
+                    boxShadow: `0 0 0 2px ${gold}, 0 0 30px rgba(201,168,76,0.3)`,
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)' }}
+                >
+                  {goldBar}
+                  <div style={{ background: cardBg, padding: '20px 24px', textAlign: 'center' }}>
+                    <p style={{ color: goldLight, fontSize: 11, fontWeight: 700, letterSpacing: 3, margin: '0 0 12px', fontFamily: 'Georgia, serif' }}>CAMPEÓN</p>
+                    {getAward(awardTypes[0].id)?.photo_url && (
+                      <img src={getAward(awardTypes[0].id).photo_url} alt="Campeon"
+                        style={{ width: 110, height: 110, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${gold}`, marginBottom: 14, boxShadow: `0 0 20px rgba(201,168,76,0.4)` }} />
+                    )}
+                    <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: '0 0 6px', fontFamily: 'Georgia, serif', textShadow: `0 0 20px rgba(201,168,76,0.4)` }}>
+                      {getAward(awardTypes[0].id).winner_name}
+                    </p>
+                    <p style={{ color: `${gold}88`, fontSize: 11, margin: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>Toca para celebrar</p>
+                  </div>
+                  {goldBar}
                 </div>
               )}
 
+              {/* Resto de premios */}
               {awardTypes.map((awardType, i) => {
                 const award = getAward(awardType.id)
                 const isChampion = i === 0
                 if (isChampion && award?.winner_name) return null
-
                 return (
                   <div
                     key={awardType.id}
                     onClick={() => award?.winner_name && setFeaturedAward({ type: awardType, award })}
-                    style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 10, border: '1px solid #8B1A3A', display: 'flex', alignItems: 'center', gap: 12, cursor: award?.winner_name ? 'pointer' : 'default' }}>
-                    {award?.photo_url ? (
-                      <img src={award.photo_url} alt={award.winner_name}
-                        style={{ width: 56, height: 56, borderRadius: '50%', objectFit: 'cover', border: '2px solid #C9A84C', flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#6B0F2B', border: '2px dashed #8B1A3A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <span style={{ fontSize: 24 }}>&#127942;</span>
+                    style={{
+                      borderRadius: 12, marginBottom: 10, overflow: 'hidden',
+                      boxShadow: `0 0 0 1px ${gold}44, 0 4px 12px rgba(0,0,0,0.4)`,
+                      cursor: award?.winner_name ? 'pointer' : 'default',
+                    }}
+                  >
+                    {goldBar}
+                    <div style={{ background: cardBg, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                      {award?.photo_url ? (
+                        <img src={award.photo_url} alt={award.winner_name}
+                          style={{ width: 54, height: 54, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${gold}`, flexShrink: 0, boxShadow: `0 0 10px rgba(201,168,76,0.3)` }} />
+                      ) : (
+                        <div style={{ width: 54, height: 54, borderRadius: '50%', background: darkBg, border: `2px dashed ${gold}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <span style={{ fontSize: 22 }}>🏆</span>
+                        </div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ color: goldLight, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: '0 0 3px', fontFamily: 'Georgia, serif' }}>{awardType.name.toUpperCase()}</p>
+                        <p style={{ color: award?.winner_name ? '#fff' : '#d4a0b0', fontSize: 15, fontWeight: award?.winner_name ? 700 : 400, margin: 0, fontFamily: 'Georgia, serif' }}>
+                          {award?.winner_name ?? 'Sin asignar'}
+                        </p>
+                        {award?.winner_name && <p style={{ color: `${gold}66`, fontSize: 11, margin: '2px 0 0', fontFamily: 'Georgia, serif' }}>Toca para ver</p>}
                       </div>
-                    )}
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: '#C9A84C', fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: '0 0 2px' }}>{awardType.name.toUpperCase()}</p>
-                      <p style={{ color: award?.winner_name ? '#fff' : '#d4a0b0', fontSize: 16, fontWeight: award?.winner_name ? 700 : 400, margin: 0 }}>
-                        {award?.winner_name ?? 'Sin asignar'}
-                      </p>
-                      {award?.winner_name && <p style={{ color: '#C9A84C', fontSize: 11, margin: '2px 0 0', opacity: 0.6 }}>Toca para ver</p>}
+                      {isAdmin && (
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditingAward(awardType); setWinnerName(award?.winner_name ?? ''); setWinnerPhoto(null) }}
+                          style={{ background: 'linear-gradient(135deg, #5A1525, #3A0A15)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '6px 12px', color: gold, cursor: 'pointer', fontSize: 12, flexShrink: 0, fontFamily: 'Georgia, serif' }}>
+                          {award?.winner_name ? 'Editar' : '+ Cargar'}
+                        </button>
+                      )}
                     </div>
-                    {isAdmin && (
-                      <button onClick={e => { e.stopPropagation(); setEditingAward(awardType); setWinnerName(award?.winner_name ?? ''); setWinnerPhoto(null) }}
-                        style={{ background: '#8B1A3A', border: 'none', borderRadius: 8, padding: '6px 12px', color: '#fff', cursor: 'pointer', fontSize: 12, flexShrink: 0 }}>
-                        {award?.winner_name ? 'Editar' : '+ Cargar'}
-                      </button>
-                    )}
+                    {goldBar}
                   </div>
                 )
               })}
             </>
           )}
 
-          {/* Modal edicion premio */}
+          {/* Modal edición premio */}
           {editingAward && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-              <div style={{ background: '#4A0B1E', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400, border: '1px solid #8B1A3A' }}>
-                <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{editingAward.name}</p>
-                {winnerPhoto ? (
-                  <img src={URL.createObjectURL(winnerPhoto)} alt="preview" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid #C9A84C', marginBottom: 12, display: 'block' }} />
-                ) : getAward(editingAward.id)?.photo_url ? (
-                  <img src={getAward(editingAward.id).photo_url} alt="actual" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid #8B1A3A', marginBottom: 12, display: 'block' }} />
-                ) : null}
-                <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 4 }}>Nombre del ganador</label>
-                <input value={winnerName} onChange={e => setWinnerName(e.target.value)}
-                  style={{ width: '100%', background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, boxSizing: 'border-box' as const, marginBottom: 12 }}
-                  placeholder="Nombre..." />
-                <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 8 }}>Foto (opcional)</label>
-                <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}
-                  onChange={e => setWinnerPhoto(e.target.files?.[0] ?? null)} />
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setEditingAward(null); setWinnerName(''); setWinnerPhoto(null) }}
-                    style={{ flex: 1, background: '#8B1A3A', color: '#fff', border: 'none', borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700 }}>
-                    Cancelar
-                  </button>
-                  <button onClick={saveAward} disabled={saving}
-                    style={{ flex: 1, background: '#C9A84C', color: '#4A0B1E', border: 'none', borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700 }}>
-                    {saving ? 'Guardando...' : 'Guardar'}
-                  </button>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
+              <div style={{ borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 400, boxShadow: `0 0 0 2px ${gold}, 0 0 40px rgba(201,168,76,0.2)` }}>
+                {goldBar}
+                <div style={{ background: cardBg, padding: 24 }}>
+                  <p style={{ color: gold, fontWeight: 700, fontSize: 16, marginBottom: 16, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{editingAward.name}</p>
+                  {(winnerPhoto || getAward(editingAward.id)?.photo_url) && (
+                    <img
+                      src={winnerPhoto ? URL.createObjectURL(winnerPhoto) : getAward(editingAward.id).photo_url}
+                      alt="preview"
+                      style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${gold}`, marginBottom: 14, display: 'block' }} />
+                  )}
+                  <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 4, fontFamily: 'Georgia, serif' }}>Nombre del ganador</label>
+                  <input value={winnerName} onChange={e => setWinnerName(e.target.value)}
+                    style={{ width: '100%', background: darkBg, border: borderGold, borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, boxSizing: 'border-box' as const, marginBottom: 12, fontFamily: 'Georgia, serif' }}
+                    placeholder="Nombre..." />
+                  <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 8, fontFamily: 'Georgia, serif' }}>Foto (opcional)</label>
+                  <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}
+                    onChange={e => setWinnerPhoto(e.target.files?.[0] ?? null)} />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { setEditingAward(null); setWinnerName(''); setWinnerPhoto(null) }}
+                      style={{ flex: 1, background: 'linear-gradient(135deg, #5A1525, #3A0A15)', color: gold, border: `1px solid ${gold}66`, borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+                      Cancelar
+                    </button>
+                    <button onClick={saveAward} disabled={saving}
+                      style={{ flex: 1, background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, border: 'none', borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+                      {saving ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  </div>
                 </div>
+                {goldBar}
               </div>
             </div>
           )}
@@ -286,32 +346,40 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
       {innerTab === 'gallery' && (
         <>
           {isAdmin && (
-            <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid #8B1A3A', textAlign: 'center' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 8 }}>Subir fotos de la jornada</p>
-              <input type="file" accept="image/*" multiple style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 8 }}
-                onChange={async e => {
-                  const files = Array.from(e.target.files ?? [])
-                  for (const file of files) await uploadGalleryPhoto(file)
-                  e.target.value = ''
-                }} />
-              {uploadingGallery && <p style={{ color: '#C9A84C', fontSize: 12 }}>Subiendo...</p>}
+            <div style={{ borderRadius: 12, marginBottom: 16, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
+              {goldBar}
+              <div style={{ background: cardBg, padding: 16, textAlign: 'center' }}>
+                <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 8, fontFamily: 'Georgia, serif' }}>Subir fotos de la jornada</p>
+                <input type="file" accept="image/*" multiple style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 8 }}
+                  onChange={async e => {
+                    const files = Array.from(e.target.files ?? [])
+                    for (const file of files) await uploadGalleryPhoto(file)
+                    e.target.value = ''
+                  }} />
+                {uploadingGallery && <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif' }}>Subiendo...</p>}
+              </div>
+              {goldBar}
             </div>
           )}
           {gallery.length === 0 ? (
-            <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 24, textAlign: 'center', border: '1px solid #8B1A3A' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 14 }}>No hay grandes momentos todavia.</p>
+            <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
+              {goldBar}
+              <div style={{ background: cardBg, padding: 24, textAlign: 'center' }}>
+                <p style={{ color: '#d4a0b0', fontSize: 14, fontFamily: 'Georgia, serif' }}>No hay grandes momentos todavía.</p>
+              </div>
+              {goldBar}
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
               {gallery.map(photo => (
-                <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', borderRadius: 8 }}>
+                <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', overflow: 'hidden', borderRadius: 8, boxShadow: `0 0 0 1px ${gold}33` }}>
                   <img src={photo.photo_url} alt="galeria"
                     style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }}
                     onClick={() => setLightbox(photo.photo_url)} />
                   {isAdmin && (
                     <button onClick={() => deleteGalleryPhoto(photo.id, photo.photo_url)}
-                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 24, height: 24, color: '#fff', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      x
+                      style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: '50%', width: 24, height: 24, color: '#fff', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      ×
                     </button>
                   )}
                 </div>
@@ -321,9 +389,9 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
         </>
       )}
 
-      {/* Lightbox galeria */}
+      {/* Lightbox galería */}
       {lightbox && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 16 }}
           onClick={() => setLightbox(null)}>
           <img src={lightbox} alt="foto" style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 12, objectFit: 'contain' }} />
         </div>
@@ -331,67 +399,99 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
 
       {/* Pantalla festiva de premio */}
       {featuredAward && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24 }}
-          onClick={() => setFeaturedAward(null)}>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.97)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: 24, flexDirection: 'column', gap: 16 }}
+          onClick={() => setFeaturedAward(null)}
+        >
           {/* Canvas confeti */}
           <canvas ref={confettiRef} style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 301 }} />
 
-          {/* Tarjeta del premio */}
-          <div onClick={e => e.stopPropagation()} style={{
-            position: 'relative', zIndex: 302,
-            width: '100%', maxWidth: 340,
-            borderRadius: 24,
-            background: 'linear-gradient(160deg, #1a0a10 0%, #2a1020 100%)',
-            border: '3px solid #C9A84C',
-            boxShadow: '0 0 40px rgba(201,168,76,0.4), inset 0 0 40px rgba(201,168,76,0.05)',
-            overflow: 'hidden',
-            padding: '0 0 24px',
-          }}>
+          {/* Tarjeta del premio — esta es la que se captura */}
+          <div
+            ref={shareCardRef}
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative', zIndex: 302,
+              width: '100%', maxWidth: 340,
+              borderRadius: 24,
+              background: 'linear-gradient(160deg, #1a0a10 0%, #2a1020 100%)',
+              border: `3px solid ${gold}`,
+              boxShadow: `0 0 40px rgba(201,168,76,0.4), inset 0 0 40px rgba(201,168,76,0.05)`,
+              overflow: 'hidden',
+              padding: '0 0 20px',
+            }}
+          >
             {/* Marco dorado superior */}
-            <div style={{ background: 'linear-gradient(90deg, #C9A84C, #f0d070, #C9A84C)', padding: '8px 16px', textAlign: 'center' }}>
-              <p style={{ color: '#4A0B1E', fontSize: 11, fontWeight: 900, letterSpacing: 3, margin: 0 }}>
+            <div style={{ background: `linear-gradient(90deg, ${gold}, #f0d070, ${gold})`, padding: '8px 16px', textAlign: 'center' }}>
+              <p style={{ color: darkBg, fontSize: 11, fontWeight: 900, letterSpacing: 3, margin: 0, fontFamily: 'Georgia, serif' }}>
                 {featuredAward.type.name.toUpperCase()}
               </p>
             </div>
 
             {/* Foto */}
-            <div style={{ position: 'relative', padding: '24px 24px 0' }}>
+            <div style={{ padding: '20px 24px 0' }}>
               {featuredAward.award?.photo_url ? (
-                <div style={{ position: 'relative' }}>
-                  <div style={{
-                    position: 'absolute', inset: -4,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #C9A84C, #f0d070, #C9A84C)',
-                    zIndex: 0,
-                  }} />
-                  <img src={featuredAward.award.photo_url} alt={featuredAward.award.winner_name}
-                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 16, position: 'relative', zIndex: 1, border: '4px solid #C9A84C' }} />
-                </div>
+                <img src={featuredAward.award.photo_url} alt={featuredAward.award.winner_name}
+                  style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 16, border: `4px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.3)` }} />
               ) : (
-                <div style={{ width: '100%', aspectRatio: '1', background: 'linear-gradient(135deg, #4A0B1E, #8B1A3A)', borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #C9A84C' }}>
-                  <span style={{ fontSize: 80, fontWeight: 900, color: '#C9A84C', opacity: 0.5 }}>{featuredAward.award?.winner_name?.charAt(0) ?? '?'}</span>
+                <div style={{ width: '100%', aspectRatio: '1', background: `linear-gradient(135deg, #4A0B1E, #8B1A3A)`, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `4px solid ${gold}` }}>
+                  <span style={{ fontSize: 80, fontWeight: 900, color: gold, opacity: 0.5, fontFamily: 'Georgia, serif' }}>{featuredAward.award?.winner_name?.charAt(0) ?? '?'}</span>
                 </div>
               )}
             </div>
 
             {/* Nombre ganador */}
-            <div style={{ textAlign: 'center', padding: '20px 24px 0' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 8px', letterSpacing: 2 }}>GANADOR</p>
-              <p style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: '0 0 4px', textShadow: '0 2px 12px rgba(201,168,76,0.5)' }}>
+            <div style={{ textAlign: 'center', padding: '18px 24px 0' }}>
+              <p style={{ color: '#d4a0b0', fontSize: 11, margin: '0 0 6px', letterSpacing: 2, fontFamily: 'Georgia, serif' }}>GANADOR</p>
+              <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: '0 0 8px', fontFamily: 'Georgia, serif', textShadow: `0 2px 12px rgba(201,168,76,0.5)` }}>
                 {featuredAward.award?.winner_name}
               </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 8 }}>
-                {['&#9733;', '&#9733;', '&#9733;'].map((s, i) => (
-                  <span key={i} style={{ color: '#C9A84C', fontSize: 18 }} dangerouslySetInnerHTML={{ __html: s }} />
-                ))}
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+                {[0, 1, 2].map(i => <span key={i} style={{ color: gold, fontSize: 18 }}>★</span>)}
               </div>
             </div>
 
-            {/* Marco dorado inferior */}
-            <div style={{ background: 'linear-gradient(90deg, #C9A84C, #f0d070, #C9A84C)', height: 4, marginTop: 20 }} />
+            {/* Logo torneo */}
+            <p style={{ color: `${gold}66`, fontSize: 10, textAlign: 'center', margin: '14px 0 0', fontFamily: 'Georgia, serif', letterSpacing: 2 }}>
+              GO POLO · {tournament.name.toUpperCase()}
+            </p>
 
-            <p style={{ color: '#555', fontSize: 11, textAlign: 'center', margin: '12px 0 0' }}>Toca fuera para cerrar</p>
+            {/* Marco dorado inferior */}
+            <div style={{ background: `linear-gradient(90deg, ${gold}, #f0d070, ${gold})`, height: 4, marginTop: 16 }} />
           </div>
+
+          {/* Botones debajo de la tarjeta */}
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', zIndex: 302, display: 'flex', gap: 10, width: '100%', maxWidth: 340 }}>
+            <button
+              onClick={shareAward}
+              disabled={sharing}
+              style={{
+                flex: 1,
+                background: sharing ? 'rgba(201,168,76,0.3)' : `linear-gradient(135deg, ${gold}, #B8960C)`,
+                color: sharing ? gold : darkBg,
+                border: 'none', borderRadius: 12, padding: '14px', cursor: sharing ? 'not-allowed' : 'pointer',
+                fontWeight: 700, fontSize: 15, fontFamily: 'Georgia, serif', letterSpacing: 1,
+                boxShadow: `0 4px 16px rgba(201,168,76,0.3)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {sharing ? 'Preparando...' : '↑ Compartir'}
+            </button>
+            <button
+              onClick={() => setFeaturedAward(null)}
+              style={{
+                background: 'rgba(30,5,15,0.8)', color: '#d4a0b0',
+                border: `1px solid ${gold}44`, borderRadius: 12, padding: '14px 18px',
+                cursor: 'pointer', fontSize: 14, fontFamily: 'Georgia, serif',
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+
+          <p onClick={e => e.stopPropagation()} style={{ position: 'relative', zIndex: 302, color: `${gold}44`, fontSize: 10, fontFamily: 'Georgia, serif', margin: 0 }}>
+            Toca fuera para cerrar
+          </p>
         </div>
       )}
     </div>
