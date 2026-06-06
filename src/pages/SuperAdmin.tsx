@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-const SUPER_EMAIL = 'superadmin@gopolo.internal'
-
 export default function SuperAdmin() {
   const [session, setSession] = useState<any>(null)
   const [checking, setChecking] = useState(true)
+  const [email, setEmail] = useState('')
   const [pwd, setPwd] = useState('')
   const [loginError, setLoginError] = useState('')
   const [logging, setLogging] = useState(false)
@@ -35,16 +34,13 @@ export default function SuperAdmin() {
   async function handleLogin() {
     setLogging(true)
     setLoginError('')
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: SUPER_EMAIL,
-      password: pwd
-    })
-    if (error || !data.user) {
-      setLoginError('Contraseña incorrecta')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pwd })
+    if (error) {
+      setLoginError(error.message)
       setLogging(false)
       return
     }
-    if (data.user.app_metadata?.role !== 'superadmin') {
+    if (!data.user || data.user.app_metadata?.role !== 'superadmin') {
       await supabase.auth.signOut()
       setLoginError('No autorizado')
       setLogging(false)
@@ -144,7 +140,9 @@ export default function SuperAdmin() {
       <div style={{ background: '#1e293b', borderRadius: 16, padding: 32, width: '100%', maxWidth: 360, border: '1px solid #334155' }}>
         <p style={{ color: '#C9A84C', fontWeight: 800, fontSize: 20, textAlign: 'center', marginBottom: 24 }}>⚙️ Superadmin</p>
         {loginError && <p style={{ color: '#f87171', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{loginError}</p>}
-        <input style={styles.input} type="password" placeholder="Contraseña maestra" value={pwd}
+        <input style={styles.input} type="email" placeholder="Email" value={email}
+          onChange={e => setEmail(e.target.value)} />
+        <input style={styles.input} type="password" placeholder="Contraseña" value={pwd}
           onChange={e => setPwd(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !logging && handleLogin()} />
         <button style={{ ...styles.btn('#C9A84C'), width: '100%', color: '#0f172a' }}
