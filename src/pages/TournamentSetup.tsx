@@ -9,7 +9,7 @@ const emptyTeam = (group = 'A') => ({
   players: [{ name: '', photo: null as File | null, handicap: 0, position: 0, bio: '' }]
 })
 
-const DEFAULT_AWARDS = ['Campeon', 'MBP (Mejor Jugador)', 'Goleador', 'Manta Mejor Yegua', 'Revelacion']
+const DEFAULT_AWARDS = ['Campeón', 'Mejor Jugador', 'Revelación', 'Goleador', 'Mejor Arquero']
 
 const FORMATS = [
   { value: 'groups_knockout', label: 'Grupos + Eliminacion directa', desc: 'Fase de grupos seguida de semifinales y final' },
@@ -33,7 +33,7 @@ function getGroupsConfig(teamCount: number, format: string): { numGroups: number
 export default function TournamentSetup({ onCreated, orgId }: Props) {
   const [name, setName] = useState('Tribu Fútbol 2026')
   const [date, setDate] = useState('')
-  const [chukkers, setChukkers] = useState(4)
+  const [chukkers, setChukkers] = useState(2)
   const [teamCount, setTeamCount] = useState(8)
   const [format, setFormat] = useState('groups_knockout')
   const [hasThirdPlace, setHasThirdPlace] = useState(false)
@@ -179,7 +179,7 @@ function downloadTemplate() {
 
         const { data: savedTeam } = await supabase
           .from('teams')
-          .insert({ tournament_id: tournament.id, name: team.name, handicap: team.handicap, group_name: team.group, logo_url: logoUrl, org_id: orgId ?? null })
+          .insert({ tournament_id: tournament.id, name: team.name, handicap: team.handicap, group_name: team.group, logo_url: logoUrl })
           .select().single()
 
         const validPlayers = team.players.filter(p => p.name.trim())
@@ -311,7 +311,7 @@ function downloadTemplate() {
           <input style={styles.input} type="number" min={1} max={8} value={chukkers} onChange={e => setChukkers(Number(e.target.value))} />
 
           <label style={{ ...styles.label, marginTop: 16 }}>Duración del tiempo (minutos)</label>
-          <input style={styles.input} type="number" min={1} max={10} value={chukkerDuration} onChange={e => setChukkerDuration(Number(e.target.value))} />
+          <input style={styles.input} type="number" min={1} max={45} value={chukkerDuration} onChange={e => setChukkerDuration(Number(e.target.value))} />
           <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Estándar: 7.5 min. Para demos o categorías juveniles podés reducirlo.</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Contraseña para cargadores de goles</label>
