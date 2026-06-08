@@ -5,7 +5,7 @@ type Props = { tournament: any; isAdmin: boolean }
 
 const gold = '#C9A84C'
 const goldLight = '#E8C96A'
-const darkBg = '#2A0A12'
+const darkBg = '#062B14'
 const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)'
 const borderGold = `1px solid ${gold}55`
 
@@ -173,18 +173,18 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
         allowTaint: true,
       })
       const blob = await new Promise<Blob>((resolve) => canvas.toBlob((b: Blob) => resolve(b!), 'image/png'))
-      const file = new File([blob], 'gopolo-ganador.png', { type: 'image/png' })
+      const file = new File([blob], 'gofutbol-ganador.png', { type: 'image/png' })
       const shareText = `🏆 ${tournament.name}\n${featuredAward.type.name}: ${featuredAward.award?.winner_name}\n\n${window.location.href}`
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({ files: [file], text: shareText })
       } else if (navigator.share) {
-        await navigator.share({ title: `Go Polo · ${tournament.name}`, text: shareText, url: window.location.href })
+        await navigator.share({ title: `Go Fútbol · ${tournament.name}`, text: shareText, url: window.location.href })
       } else {
         // Fallback: descargar imagen
         const a = document.createElement('a')
         a.href = canvas.toDataURL('image/png')
-        a.download = 'gopolo-ganador.png'
+        a.download = 'gofutbol-ganador.png'
         a.click()
       }
     } catch (e: any) {
@@ -206,7 +206,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
           <button key={t} onClick={() => setInnerTab(t)} style={{
             flex: 1, padding: '10px 8px', textAlign: 'center' as const, cursor: 'pointer',
             fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1,
-            color: innerTab === t ? gold : '#d4a0b0',
+            color: innerTab === t ? gold : '#a8d5b5',
             background: innerTab === t ? `rgba(201,168,76,0.1)` : 'none',
             border: 'none', borderRadius: 8,
             transition: 'color 0.2s',
@@ -224,7 +224,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
             <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
               {goldBar}
               <div style={{ background: cardBg, padding: 24, textAlign: 'center' }}>
-                <p style={{ color: '#d4a0b0', fontSize: 14, fontFamily: 'Georgia, serif' }}>No se definieron premios para este torneo.</p>
+                <p style={{ color: '#a8d5b5', fontSize: 14, fontFamily: 'Georgia, serif' }}>No se definieron premios para este torneo.</p>
               </div>
               {goldBar}
             </div>
@@ -285,7 +285,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
                       )}
                       <div style={{ flex: 1 }}>
                         <p style={{ color: goldLight, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: '0 0 3px', fontFamily: 'Georgia, serif' }}>{awardType.name.toUpperCase()}</p>
-                        <p style={{ color: award?.winner_name ? '#fff' : '#d4a0b0', fontSize: 15, fontWeight: award?.winner_name ? 700 : 400, margin: 0, fontFamily: 'Georgia, serif' }}>
+                        <p style={{ color: award?.winner_name ? '#fff' : '#a8d5b5', fontSize: 15, fontWeight: award?.winner_name ? 700 : 400, margin: 0, fontFamily: 'Georgia, serif' }}>
                           {award?.winner_name ?? 'Sin asignar'}
                         </p>
                         {award?.winner_name && <p style={{ color: `${gold}66`, fontSize: 11, margin: '2px 0 0', fontFamily: 'Georgia, serif' }}>Toca para ver</p>}
@@ -293,7 +293,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
                       {isAdmin && (
                         <button
                           onClick={e => { e.stopPropagation(); setEditingAward(awardType); setWinnerName(award?.winner_name ?? ''); setWinnerPhoto(null) }}
-                          style={{ background: 'linear-gradient(135deg, #5A1525, #3A0A15)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '6px 12px', color: gold, cursor: 'pointer', fontSize: 12, flexShrink: 0, fontFamily: 'Georgia, serif' }}>
+                          style={{ background: 'linear-gradient(135deg, #0D4F28, #062B14)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '6px 12px', color: gold, cursor: 'pointer', fontSize: 12, flexShrink: 0, fontFamily: 'Georgia, serif' }}>
                           {award?.winner_name ? 'Editar' : '+ Cargar'}
                         </button>
                       )}
@@ -318,16 +318,16 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
                       alt="preview"
                       style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${gold}`, marginBottom: 14, display: 'block' }} />
                   )}
-                  <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 4, fontFamily: 'Georgia, serif' }}>Nombre del ganador</label>
+                  <label style={{ color: '#a8d5b5', fontSize: 12, display: 'block', marginBottom: 4, fontFamily: 'Georgia, serif' }}>Nombre del ganador</label>
                   <input value={winnerName} onChange={e => setWinnerName(e.target.value)}
                     style={{ width: '100%', background: darkBg, border: borderGold, borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, boxSizing: 'border-box' as const, marginBottom: 12, fontFamily: 'Georgia, serif' }}
                     placeholder="Nombre..." />
-                  <label style={{ color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 8, fontFamily: 'Georgia, serif' }}>Foto (opcional)</label>
-                  <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}
+                  <label style={{ color: '#a8d5b5', fontSize: 12, display: 'block', marginBottom: 8, fontFamily: 'Georgia, serif' }}>Foto (opcional)</label>
+                  <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 16 }}
                     onChange={e => setWinnerPhoto(e.target.files?.[0] ?? null)} />
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => { setEditingAward(null); setWinnerName(''); setWinnerPhoto(null) }}
-                      style={{ flex: 1, background: 'linear-gradient(135deg, #5A1525, #3A0A15)', color: gold, border: `1px solid ${gold}66`, borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+                      style={{ flex: 1, background: 'linear-gradient(135deg, #0D4F28, #062B14)', color: gold, border: `1px solid ${gold}66`, borderRadius: 10, padding: '12px', cursor: 'pointer', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
                       Cancelar
                     </button>
                     <button onClick={saveAward} disabled={saving}
@@ -349,8 +349,8 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
             <div style={{ borderRadius: 12, marginBottom: 16, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
               {goldBar}
               <div style={{ background: cardBg, padding: 16, textAlign: 'center' }}>
-                <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 8, fontFamily: 'Georgia, serif' }}>Subir fotos de la jornada</p>
-                <input type="file" accept="image/*" multiple style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 8 }}
+                <p style={{ color: '#a8d5b5', fontSize: 13, marginBottom: 8, fontFamily: 'Georgia, serif' }}>Subir fotos de la jornada</p>
+                <input type="file" accept="image/*" multiple style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 8 }}
                   onChange={async e => {
                     const files = Array.from(e.target.files ?? [])
                     for (const file of files) await uploadGalleryPhoto(file)
@@ -365,7 +365,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
             <div style={{ borderRadius: 12, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44` }}>
               {goldBar}
               <div style={{ background: cardBg, padding: 24, textAlign: 'center' }}>
-                <p style={{ color: '#d4a0b0', fontSize: 14, fontFamily: 'Georgia, serif' }}>No hay grandes momentos todavía.</p>
+                <p style={{ color: '#a8d5b5', fontSize: 14, fontFamily: 'Georgia, serif' }}>No hay grandes momentos todavía.</p>
               </div>
               {goldBar}
             </div>
@@ -434,7 +434,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
                 <img src={featuredAward.award.photo_url} alt={featuredAward.award.winner_name}
                   style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 16, border: `4px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.3)` }} />
               ) : (
-                <div style={{ width: '100%', aspectRatio: '1', background: `linear-gradient(135deg, #4A0B1E, #8B1A3A)`, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `4px solid ${gold}` }}>
+                <div style={{ width: '100%', aspectRatio: '1', background: `linear-gradient(135deg, #0D4F28, #1A6B35)`, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `4px solid ${gold}` }}>
                   <span style={{ fontSize: 80, fontWeight: 900, color: gold, opacity: 0.5, fontFamily: 'Georgia, serif' }}>{featuredAward.award?.winner_name?.charAt(0) ?? '?'}</span>
                 </div>
               )}
@@ -442,7 +442,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
 
             {/* Nombre ganador */}
             <div style={{ textAlign: 'center', padding: '18px 24px 0' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 11, margin: '0 0 6px', letterSpacing: 2, fontFamily: 'Georgia, serif' }}>GANADOR</p>
+              <p style={{ color: '#a8d5b5', fontSize: 11, margin: '0 0 6px', letterSpacing: 2, fontFamily: 'Georgia, serif' }}>GANADOR</p>
               <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: '0 0 8px', fontFamily: 'Georgia, serif', textShadow: `0 2px 12px rgba(201,168,76,0.5)` }}>
                 {featuredAward.award?.winner_name}
               </p>
@@ -453,7 +453,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
 
             {/* Logo torneo */}
             <p style={{ color: `${gold}66`, fontSize: 10, textAlign: 'center', margin: '14px 0 0', fontFamily: 'Georgia, serif', letterSpacing: 2 }}>
-              GO POLO · {tournament.name.toUpperCase()}
+              GO FÚTBOL · {tournament.name.toUpperCase()}
             </p>
 
             {/* Marco dorado inferior */}
@@ -481,7 +481,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
             <button
               onClick={() => setFeaturedAward(null)}
               style={{
-                background: 'rgba(30,5,15,0.8)', color: '#d4a0b0',
+                background: 'rgba(30,5,15,0.8)', color: '#a8d5b5',
                 border: `1px solid ${gold}44`, borderRadius: 12, padding: '14px 18px',
                 cursor: 'pointer', fontSize: 14, fontFamily: 'Georgia, serif',
               }}

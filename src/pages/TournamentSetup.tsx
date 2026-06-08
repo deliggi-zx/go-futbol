@@ -6,7 +6,7 @@ type Props = { onCreated: (t: any) => void; orgId?: string }
 
 const emptyTeam = (group = 'A') => ({
   name: '', handicap: 0, group, logo: null as File | null,
-  players: [{ name: '', photo: null as File | null, handicap: 0, position: 0, bio: '', mares: '' }]
+  players: [{ name: '', photo: null as File | null, handicap: 0, position: 0, bio: '' }]
 })
 
 const DEFAULT_AWARDS = ['Campeon', 'MBP (Mejor Jugador)', 'Goleador', 'Manta Mejor Yegua', 'Revelacion']
@@ -31,7 +31,7 @@ function getGroupsConfig(teamCount: number, format: string): { numGroups: number
 }
 
 export default function TournamentSetup({ onCreated, orgId }: Props) {
-  const [name, setName] = useState('Tribu Polo 2026')
+  const [name, setName] = useState('Tribu Fútbol 2026')
   const [date, setDate] = useState('')
   const [chukkers, setChukkers] = useState(4)
   const [teamCount, setTeamCount] = useState(8)
@@ -80,7 +80,7 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
 
   function addPlayer(teamIdx: number) {
     setTeams(prev => prev.map((t, i) => i === teamIdx
-      ? { ...t, players: [...t.players, { name: '', photo: null, handicap: 0, position: 0, bio: '', mares: '' }] }
+      ? { ...t, players: [...t.players, { name: '', photo: null, handicap: 0, position: 0, bio: '' }] }
       : t
     ))
   }
@@ -92,14 +92,14 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   }
 function downloadTemplate() {
     const data = [
-      { equipo: 'Tribu Polo', grupo: 'A', handicap_equipo: 10, jugador: 'Juan Pérez', handicap_jugador: 3, posicion: 1, reseña: 'Descripción breve', yeguas: 'Nombre yegua' },
-      { equipo: 'Tribu Polo', grupo: 'A', handicap_equipo: 10, jugador: 'Pedro García', handicap_jugador: 4, posicion: 2, reseña: '', yeguas: '' },
-      { equipo: 'La Dolfina', grupo: 'B', handicap_equipo: 8, jugador: 'Carlos López', handicap_jugador: 2, posicion: 3, reseña: '', yeguas: '' },
+      { equipo: 'Tribu Fútbol', grupo: 'A', handicap_equipo: 10, jugador: 'Juan Pérez', handicap_jugador: 3, posicion: 1, reseña: 'Descripción breve' },
+      { equipo: 'Tribu Fútbol', grupo: 'A', handicap_equipo: 10, jugador: 'Pedro García', handicap_jugador: 4, posicion: 2, reseña: '' },
+      { equipo: 'La Dolfina', grupo: 'B', handicap_equipo: 8, jugador: 'Carlos López', handicap_jugador: 2, posicion: 3, reseña: '' },
     ]
     const ws = XLSX.utils.json_to_sheet(data)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
-    XLSX.writeFile(wb, 'plantilla_gopolo.xlsx')
+    XLSX.writeFile(wb, 'plantilla_gofutbol.xlsx')
   }
 
   function handleExcelUpload(file: File) {
@@ -131,8 +131,7 @@ function downloadTemplate() {
             photo: null,
             handicap: Number(row.handicap_jugador ?? 0),
             position: Number(row.posicion ?? 0),
-            bio: String(row.reseña ?? ''),
-            mares: String(row.yeguas ?? '')
+            bio: String(row.reseña ?? '')
           })
         }
       }
@@ -189,7 +188,7 @@ function downloadTemplate() {
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
           await supabase.from('players').insert({
             team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
-            handicap: player.handicap, position: player.position, bio: player.bio, mares: player.mares,
+            handicap: player.handicap, position: player.position, bio: player.bio,
           })
         }
       }
@@ -255,19 +254,19 @@ function downloadTemplate() {
   }
 
   const styles = {
-    container: { minHeight: '100vh', background: '#6B0F2B', color: '#fff', padding: '24px 16px' },
+    container: { minHeight: '100vh', background: '#0A3D1F', color: '#fff', padding: '24px 16px' },
     title: { fontSize: 28, fontWeight: 800, color: '#C9A84C', textAlign: 'center' as const, marginBottom: 8 },
-    sub: { textAlign: 'center' as const, color: '#d4a0b0', marginBottom: 32 },
-    card: { background: '#4A0B1E', borderRadius: 16, padding: 24, marginBottom: 16, maxWidth: 600, margin: '0 auto 16px' },
-    label: { fontSize: 13, color: '#d4a0b0', marginBottom: 6, display: 'block' },
-    input: { width: '100%', background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, boxSizing: 'border-box' as const },
-    btn: { background: '#C9A84C', color: '#4A0B1E', fontWeight: 700, fontSize: 16, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16 },
-    btnSm: { background: '#8B1A3A', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, marginTop: 8 },
-    teamCard: { background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #8B1A3A' },
+    sub: { textAlign: 'center' as const, color: '#a8d5b5', marginBottom: 32 },
+    card: { background: '#0D4F28', borderRadius: 16, padding: 24, marginBottom: 16, maxWidth: 600, margin: '0 auto 16px' },
+    label: { fontSize: 13, color: '#a8d5b5', marginBottom: 6, display: 'block' },
+    input: { width: '100%', background: '#0A3D1F', border: '1px solid #1A6B35', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 15, boxSizing: 'border-box' as const },
+    btn: { background: '#C9A84C', color: '#0D4F28', fontWeight: 700, fontSize: 16, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16 },
+    btnSm: { background: '#1A6B35', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 13, marginTop: 8 },
+    teamCard: { background: '#0D4F28', borderRadius: 12, padding: 16, marginBottom: 12, border: '1px solid #1A6B35' },
     row: { display: 'flex', gap: 12, alignItems: 'center' },
     formatCard: (active: boolean) => ({
-      background: active ? 'rgba(201,168,76,0.15)' : '#6B0F2B',
-      border: active ? '2px solid #C9A84C' : '1px solid #8B1A3A',
+      background: active ? 'rgba(201,168,76,0.15)' : '#0A3D1F',
+      border: active ? '2px solid #C9A84C' : '1px solid #1A6B35',
       borderRadius: 10, padding: '12px 14px', cursor: 'pointer', marginBottom: 8,
     }),
   }
@@ -275,7 +274,7 @@ function downloadTemplate() {
   function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
     if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
     return (
-      <div style={{ width: size, height: size, borderRadius: '50%', background: '#8B1A3A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
+      <div style={{ width: size, height: size, borderRadius: '50%', background: '#1A6B35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
         {name.charAt(0).toUpperCase()}
       </div>
     )
@@ -284,18 +283,18 @@ function downloadTemplate() {
   return (
     <div style={styles.container}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-        <img src="/logo.png" alt="Tribu de Polo" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'contain' }} />
+        <img src="/logo.png" alt="Go Fútbol" style={{ width: 80, height: 80, borderRadius: 12, objectFit: 'contain' }} />
       </div>
-      <h1 style={styles.title}>GO POLO</h1>
+      <h1 style={styles.title}>GO FÚTBOL</h1>
       <p style={styles.sub}>Configuracion del torneo</p>
 
       {/* Stepper */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
         {(['config', 'teams', 'awards'] as const).map((s, i) => (
           <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: step === s ? '#C9A84C' : '#8B1A3A', color: step === s ? '#4A0B1E' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{i + 1}</div>
-            <span style={{ fontSize: 12, color: step === s ? '#C9A84C' : '#d4a0b0' }}>{s === 'config' ? 'Config' : s === 'teams' ? 'Equipos' : 'Premios'}</span>
-            {i < 2 && <span style={{ color: '#8B1A3A' }}>-</span>}
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: step === s ? '#C9A84C' : '#1A6B35', color: step === s ? '#0D4F28' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13 }}>{i + 1}</div>
+            <span style={{ fontSize: 12, color: step === s ? '#C9A84C' : '#a8d5b5' }}>{s === 'config' ? 'Config' : s === 'teams' ? 'Equipos' : 'Premios'}</span>
+            {i < 2 && <span style={{ color: '#1A6B35' }}>-</span>}
           </div>
         ))}
       </div>
@@ -308,22 +307,22 @@ function downloadTemplate() {
           <label style={{ ...styles.label, marginTop: 16 }}>Fecha</label>
           <input style={styles.input} type="date" value={date} onChange={e => setDate(e.target.value)} />
 
-          <label style={{ ...styles.label, marginTop: 16 }}>Chukkers por partido</label>
+          <label style={{ ...styles.label, marginTop: 16 }}>Tiempos por partido</label>
           <input style={styles.input} type="number" min={1} max={8} value={chukkers} onChange={e => setChukkers(Number(e.target.value))} />
 
-          <label style={{ ...styles.label, marginTop: 16 }}>Duración por chukker (minutos)</label>
+          <label style={{ ...styles.label, marginTop: 16 }}>Duración del tiempo (minutos)</label>
           <input style={styles.input} type="number" min={1} max={10} value={chukkerDuration} onChange={e => setChukkerDuration(Number(e.target.value))} />
-          <p style={{ color: '#d4a0b0', fontSize: 11, marginTop: 4 }}>Estándar: 7.5 min. Para demos o categorías juveniles podés reducirlo.</p>
+          <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Estándar: 7.5 min. Para demos o categorías juveniles podés reducirlo.</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Contraseña para cargadores de goles</label>
           <input style={styles.input} value={scorerPassword} onChange={e => setScorerPassword(e.target.value)} placeholder="Ej: polo2026" />
-          <p style={{ color: '#d4a0b0', fontSize: 11, marginTop: 4 }}>Compartila con quienes van a cargar goles el día del torneo</p>
+          <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Compartila con quienes van a cargar goles el día del torneo</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Cantidad de equipos</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
             {TEAM_COUNTS.map(n => (
               <button key={n} onClick={() => handleTeamCountChange(n)}
-                style={{ ...styles.btnSm, background: teamCount === n ? '#C9A84C' : '#8B1A3A', color: teamCount === n ? '#4A0B1E' : '#fff', marginTop: 0, padding: '8px 14px' }}>
+                style={{ ...styles.btnSm, background: teamCount === n ? '#C9A84C' : '#1A6B35', color: teamCount === n ? '#0D4F28' : '#fff', marginTop: 0, padding: '8px 14px' }}>
                 {n}
               </button>
             ))}
@@ -333,28 +332,28 @@ function downloadTemplate() {
           {FORMATS.map(f => (
             <div key={f.value} style={styles.formatCard(format === f.value)} onClick={() => handleFormatChange(f.value)}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${format === f.value ? '#C9A84C' : '#8B1A3A'}`, background: format === f.value ? '#C9A84C' : 'transparent', flexShrink: 0 }} />
+                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${format === f.value ? '#C9A84C' : '#1A6B35'}`, background: format === f.value ? '#C9A84C' : 'transparent', flexShrink: 0 }} />
                 <div>
                   <p style={{ color: format === f.value ? '#C9A84C' : '#fff', fontWeight: 700, fontSize: 14, margin: 0 }}>{f.label}</p>
-                  <p style={{ color: '#d4a0b0', fontSize: 12, margin: '2px 0 0' }}>{f.desc}</p>
+                  <p style={{ color: '#a8d5b5', fontSize: 12, margin: '2px 0 0' }}>{f.desc}</p>
                 </div>
               </div>
             </div>
           ))}
 
           {format !== 'round_robin' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 14px', background: '#6B0F2B', borderRadius: 8, border: '1px solid #8B1A3A', cursor: 'pointer' }}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12, padding: '10px 14px', background: '#0A3D1F', borderRadius: 8, border: '1px solid #1A6B35', cursor: 'pointer' }}
               onClick={() => setHasThirdPlace(!hasThirdPlace)}>
-              <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${hasThirdPlace ? '#C9A84C' : '#8B1A3A'}`, background: hasThirdPlace ? '#C9A84C' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {hasThirdPlace && <span style={{ color: '#4A0B1E', fontSize: 13, fontWeight: 900 }}>✓</span>}
+              <div style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${hasThirdPlace ? '#C9A84C' : '#1A6B35'}`, background: hasThirdPlace ? '#C9A84C' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {hasThirdPlace && <span style={{ color: '#0D4F28', fontSize: 13, fontWeight: 900 }}>✓</span>}
               </div>
               <span style={{ color: '#fff', fontSize: 14 }}>Partido por 3er y 4to puesto</span>
             </div>
           )}
 
           {format === 'groups_knockout' && (
-            <div style={{ marginTop: 12, padding: '10px 14px', background: '#6B0F2B', borderRadius: 8, border: '1px solid #8B1A3A' }}>
-              <p style={{ color: '#d4a0b0', fontSize: 12, margin: 0 }}>
+            <div style={{ marginTop: 12, padding: '10px 14px', background: '#0A3D1F', borderRadius: 8, border: '1px solid #1A6B35' }}>
+              <p style={{ color: '#a8d5b5', fontSize: 12, margin: 0 }}>
                 Con {teamCount} equipos se forman {getGroupsConfig(teamCount, format).numGroups} grupos: {getGroupsConfig(teamCount, format).groupNames.join(', ')}
               </p>
             </div>
@@ -367,9 +366,9 @@ function downloadTemplate() {
       {step === 'teams' && (
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
         {/* Importar desde Excel */}
-          <div style={{ background: '#4A0B1E', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid #8B1A3A' }}>
+          <div style={{ background: '#0D4F28', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid #1A6B35' }}>
             <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Importar desde Excel</p>
-            <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 12px' }}>Descargá la plantilla, completala y subila para cargar todos los equipos automáticamente.</p>
+            <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 12px' }}>Descargá la plantilla, completala y subila para cargar todos los equipos automáticamente.</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
               <button onClick={downloadTemplate} style={{ ...styles.btnSm, background: '#1e40af', marginTop: 0 }}>
                 ↓ Descargar plantilla
@@ -386,12 +385,12 @@ function downloadTemplate() {
           {teams.slice(0, teamCount).map((team, i) => (
             <div key={i} style={styles.teamCard}>
               <div style={{ ...styles.row, marginBottom: 12, justifyContent: 'space-between' }}>
-                <span style={{ color: '#d4a0b0', fontSize: 13 }}>Equipo {i + 1}</span>
+                <span style={{ color: '#a8d5b5', fontSize: 13 }}>Equipo {i + 1}</span>
                 {format !== 'knockout' && (
                   <div style={{ display: 'flex', gap: 6 }}>
                     {groupNames.map(g => (
                       <button key={g} onClick={() => updateTeam(i, 'group', g)}
-                        style={{ ...styles.btnSm, marginTop: 0, background: team.group === g ? '#C9A84C' : '#8B1A3A', color: team.group === g ? '#4A0B1E' : '#fff', padding: '4px 10px' }}>
+                        style={{ ...styles.btnSm, marginTop: 0, background: team.group === g ? '#C9A84C' : '#1A6B35', color: team.group === g ? '#0D4F28' : '#fff', padding: '4px 10px' }}>
                         Grupo {g}
                       </button>
                     ))}
@@ -406,10 +405,10 @@ function downloadTemplate() {
                 </div>
               </div>
               <label style={{ ...styles.label, fontSize: 11 }}>Logo del equipo (opcional)</label>
-              <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 8 }} onChange={e => updateTeam(i, 'logo', e.target.files?.[0] ?? null)} />
+              <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 8 }} onChange={e => updateTeam(i, 'logo', e.target.files?.[0] ?? null)} />
               <input style={styles.input} type="number" placeholder="Handicap del equipo" value={team.handicap} onChange={e => updateTeam(i, 'handicap', Number(e.target.value))} />
 
-              <p style={{ color: '#d4a0b0', fontSize: 12, marginTop: 12, marginBottom: 8 }}>Jugadores:</p>
+              <p style={{ color: '#a8d5b5', fontSize: 12, marginTop: 12, marginBottom: 8 }}>Jugadores:</p>
               {team.players.map((player, j) => (
                 <div key={j} style={{ ...styles.row, marginBottom: 8, alignItems: 'flex-start' }}>
                   <Avatar url={player.photo ? URL.createObjectURL(player.photo) : null} name={player.name || '?'} size={36} />
@@ -420,8 +419,7 @@ function downloadTemplate() {
                       <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Pos" min={1} max={4} value={player.position} onChange={e => updatePlayer(i, j, 'position', Number(e.target.value))} />
                     </div>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Resena breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
-                    <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Yeguas (opcional)" value={player.mares} onChange={e => updatePlayer(i, j, 'mares', e.target.value)} />
-                    <input type="file" accept="image/*" style={{ color: '#d4a0b0', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
+                    <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
                   </div>
                 </div>
               ))}
@@ -429,7 +427,7 @@ function downloadTemplate() {
             </div>
           ))}
           <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('config')}>Volver</button>
+            <button style={{ ...styles.btn, background: '#1A6B35', color: '#fff' }} onClick={() => setStep('config')}>Volver</button>
             <button style={styles.btn} onClick={() => setStep('awards')}>Siguiente - Premios</button>
           </div>
         </div>
@@ -439,22 +437,22 @@ function downloadTemplate() {
         <div style={{ maxWidth: 600, margin: '0 auto' }}>
           <div style={styles.teamCard}>
             <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14, marginBottom: 4 }}>Premios del torneo</p>
-            <p style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 16 }}>Define que premios se van a entregar.</p>
+            <p style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 16 }}>Define que premios se van a entregar.</p>
             {awards.map((award, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <div style={{ flex: 1, background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14 }}>
+                <div style={{ flex: 1, background: '#0A3D1F', border: '1px solid #1A6B35', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14 }}>
                   {award}
                 </div>
-                <button onClick={() => removeAward(i)} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}>x</button>
+                <button onClick={() => removeAward(i)} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}>x</button>
               </div>
             ))}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <input style={{ ...styles.input, flex: 1 }} placeholder="Nuevo premio..." value={newAward} onChange={e => setNewAward(e.target.value)} onKeyDown={e => e.key === 'Enter' && addAward()} />
-              <button onClick={addAward} style={{ background: '#8B1A3A', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 700 }}>+</button>
+              <button onClick={addAward} style={{ background: '#1A6B35', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 700 }}>+</button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <button style={{ ...styles.btn, background: '#8B1A3A', color: '#fff' }} onClick={() => setStep('teams')}>Volver</button>
+            <button style={{ ...styles.btn, background: '#1A6B35', color: '#fff' }} onClick={() => setStep('teams')}>Volver</button>
             <button style={styles.btn} onClick={handleCreate} disabled={saving}>
               {saving ? 'Creando...' : 'Crear torneo'}
             </button>

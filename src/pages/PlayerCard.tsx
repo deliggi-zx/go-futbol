@@ -22,7 +22,7 @@ type Props = {
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
   if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: '#8B1A3A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: '#1A6B35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
@@ -128,7 +128,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
         {players.map((p, i) => (
           <div key={i} onClick={() => setIndex(i)} style={{
             width: i === index ? 20 : 6, height: 6, borderRadius: 3,
-            background: p.id === votedPlayerId ? '#C9A84C' : i === index ? '#fff' : '#8B1A3A',
+            background: p.id === votedPlayerId ? '#C9A84C' : i === index ? '#fff' : '#1A6B35',
             transition: 'width 0.2s', cursor: 'pointer'
           }} />
         ))}
@@ -143,7 +143,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
           borderRadius: 20,
           overflow: 'hidden',
           boxShadow: isVoted ? '0 0 24px rgba(201,168,76,0.5)' : '0 8px 32px rgba(0,0,0,0.6)',
-          border: isVoted ? '2px solid #C9A84C' : '1px solid #8B1A3A',
+          border: isVoted ? '2px solid #C9A84C' : '1px solid #1A6B35',
           transform: cardTranslate,
           transition: swipeDir ? 'transform 0.3s ease-in' : dragX !== 0 ? 'none' : 'transform 0.2s ease-out',
           background: '#1a0a10',
@@ -160,7 +160,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
           <img src={player.photo_url} alt={player.name}
             style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #4A0B1E, #8B1A3A)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
+          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0D4F28, #1A6B35)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
             <span style={{ fontSize: 80, fontWeight: 900, color: '#C9A84C', opacity: 0.5 }}>{player.name.charAt(0)}</span>
           </div>
         )}
@@ -168,20 +168,20 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
         {/* Badge votado */}
         {isVoted && (
           <div style={{ position: 'absolute', top: 12, right: 12, background: '#C9A84C', borderRadius: 20, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: '#4A0B1E', fontSize: 13, fontWeight: 900 }}>&#9733; Tu voto</span>
+            <span style={{ color: '#0D4F28', fontSize: 13, fontWeight: 900 }}>&#9733; Tu voto</span>
           </div>
         )}
 
         {/* Hint votar */}
         {showVoteHint && (
           <div style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(201,168,76,0.9)', borderRadius: 12, padding: '8px 16px', border: '3px solid #C9A84C', transform: 'rotate(-15deg)' }}>
-            <span style={{ color: '#4A0B1E', fontWeight: 900, fontSize: 20 }}>VOTO</span>
+            <span style={{ color: '#0D4F28', fontWeight: 900, fontSize: 20 }}>VOTO</span>
           </div>
         )}
 
         {/* Hint pasar */}
         {showSkipHint && (
-          <div style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(139,26,58,0.9)', borderRadius: 12, padding: '8px 16px', border: '3px solid #8B1A3A', transform: 'rotate(15deg)' }}>
+          <div style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(26,107,53,0.9)', borderRadius: 12, padding: '8px 16px', border: '3px solid #1A6B35', transform: 'rotate(15deg)' }}>
             <span style={{ color: '#fff', fontWeight: 900, fontSize: 20 }}>PASO</span>
           </div>
         )}
@@ -212,8 +212,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
               </div>
             )}
           </div>
-          {player.bio && <p style={{ color: '#d4a0b0', fontSize: 12, margin: '0 0 4px', fontStyle: 'italic' }}>{player.bio}</p>}
-          {player.mares && <p style={{ color: '#888', fontSize: 11, margin: 0 }}>Yeguas: {player.mares}</p>}
+          {player.bio && <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 4px', fontStyle: 'italic' }}>{player.bio}</p>}
         </div>
       </div>
 
@@ -221,15 +220,15 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
       <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
         <button onClick={handlePrev} style={{
           width: 48, height: 48, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #8B1A3A',
-          color: '#8B1A3A', fontSize: 20, cursor: 'pointer',
+          background: '#1a0a10', border: '2px solid #1A6B35',
+          color: '#1A6B35', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>&larr;</button>
 
         <button onClick={handleSkip} style={{
           width: 56, height: 56, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #8B1A3A',
-          color: '#d4a0b0', fontSize: 22, cursor: 'pointer',
+          background: '#1a0a10', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 22, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
         }}>&times;</button>
@@ -246,21 +245,21 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
 
         <button onClick={handleNext} style={{
           width: 56, height: 56, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #8B1A3A',
-          color: '#d4a0b0', fontSize: 22, cursor: 'pointer',
+          background: '#1a0a10', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 22, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
         }}>&times;</button>
 
         <button onClick={handleNext} style={{
           width: 48, height: 48, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #8B1A3A',
-          color: '#8B1A3A', fontSize: 20, cursor: 'pointer',
+          background: '#1a0a10', border: '2px solid #1A6B35',
+          color: '#1A6B35', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>&rarr;</button>
       </div>
 
-      <p style={{ color: '#d4a0b0', fontSize: 11, margin: 0 }}>Desliza o usa los botones</p>
+      <p style={{ color: '#a8d5b5', fontSize: 11, margin: 0 }}>Desliza o usa los botones</p>
     </div>
   )
 }

@@ -6,7 +6,7 @@ import PlayerCard from './PlayerCard'
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
   if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }} />
   return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #5A1525 0%, #3A0A15 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }}>
+    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #0D4F28 0%, #062B14 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }}>
       {name.charAt(0).toUpperCase()}
     </div>
   )
@@ -22,7 +22,7 @@ function FlapDigit({ value, flipping, highlight = false }: { value: number; flip
       fontFamily: 'Georgia, serif',
       fontSize: highlight ? 48 : 46,
       fontWeight: 900,
-      color: highlight ? '#FFE000' : '#6B0F2B',
+      color: highlight ? '#FFE000' : '#0A3D1F',
       position: 'relative' as const,
       overflow: 'hidden' as const,
       boxShadow: highlight
@@ -335,7 +335,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .eq('match_id', match.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR stopClock:', error); alert(`Error al finalizar chukker: ${error.message} (code: ${error.code})`); return }
+    if (error) { console.error('[Clock] ERROR stopClock:', error); alert(`Error al finalizar tiempo: ${error.message} (code: ${error.code})`); return }
     console.log('[Clock] stopClock OK, data=', data)
     clockRef.current = data; setClock(data)
   }
@@ -346,10 +346,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   const gold = '#C9A84C'
   const goldLight = '#E8C96A'
-  const darkBg = '#2A0A12'
+  const darkBg = '#062B14'
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#3D0A1A', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#0A3D1F', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <p style={{ color: gold, fontSize: 16, fontFamily: 'Georgia, serif' }}>Cargando...</p>
     </div>
   )
@@ -360,11 +360,11 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const stoppedRemaining = clock ? chukkerSeconds - clock.elapsed_seconds : 0
 
   return (
-    <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#3D0A1A', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
+    <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#0A3D1F', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
 
       {/* Header */}
       <div style={{ background: 'rgba(30,5,15,0.95)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
           ← Volver al fixture
         </button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -375,13 +375,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
-            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: '#2A0A12', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: '#062B14', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
             </button>
-            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : '#2A0A12', border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : '#062B14', border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
               {canchMode ? 'Normal' : 'Cancha'}
             </button>
-            <button onClick={() => setShowQR(!showQR)} style={{ background: '#2A0A12', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={() => setShowQR(!showQR)} style={{ background: '#062B14', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
               QR
             </button>
           </div>
@@ -409,7 +409,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             {clock ? (
               <>
                 <div style={{ fontSize: 10, color: `${gold}aa`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 4, textTransform: 'uppercase' as const }}>
-                  Chukker {clock.chukker}
+                  Tiempo {clock.chukker}
                 </div>
                 <div style={{
                   fontSize: clock.status === 'stopped' ? 36 : 52,
@@ -426,7 +426,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   {clockIsOvertime ? '+' : ''}{formatClockTime(clock.status === 'stopped' ? stoppedRemaining : clockRemaining)}
                 </div>
                 <div style={{ fontSize: 10, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 4, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
-                  {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ CHUKKER FINALIZADO'}
+                  {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ TIEMPO FINALIZADO'}
                 </div>
               </>
             ) : (
@@ -443,15 +443,15 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {!clock && (
                 <button onClick={() => { console.log('[Clock] click Iniciar Chukker'); startClock(1) }}
                   style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
-                  Iniciar Chukker
+                  Iniciar Tiempo
                 </button>
               )}
               {/* Estado: corriendo → Pausar / Finalizar Chukker (cuando llega a 0) */}
               {clock?.status === 'running' && (
                 clockRemaining <= 0 ? (
                   <button onClick={stopClock}
-                    style={{ background: 'linear-gradient(135deg, #3D1020, #5A0A20)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
-                    Finalizar Chukker
+                    style={{ background: 'linear-gradient(135deg, #3D1020, #062B14)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
+                    Finalizar Tiempo
                   </button>
                 ) : (
                   <>
@@ -461,7 +461,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                     </button>
                     <button onClick={stopClock}
                       style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                      Finalizar Chukker
+                      Finalizar Tiempo
                     </button>
                   </>
                 )
@@ -475,7 +475,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   </button>
                   <button onClick={stopClock}
                     style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                    Finalizar Chukker
+                    Finalizar Tiempo
                   </button>
                 </>
               )}
@@ -483,7 +483,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {clock?.status === 'stopped' && (
                 <button onClick={() => startClock(clock.chukker + 1)}
                   style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
-                  Iniciar Chukker {clock.chukker + 1}
+                  Iniciar Tiempo {clock.chukker + 1}
                 </button>
               )}
             </div>
@@ -498,7 +498,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
               <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_home?.name}</p>
-              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_home?.handicap ?? 0}</p>
+              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_home?.handicap ?? 0}</p>
               <FlapScore
                 score={homeGoals}
                 highlight={canchMode}
@@ -512,7 +512,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 68, flexShrink: 0 }}>
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: match.status === 'live' ? `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: match.status === 'live' ? `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` : 'none' }}>
                 {match.status === 'live' && <>
-                  <span style={{ color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>Ch.</span>
+                  <span style={{ color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>T.</span>
                   <span style={{ color: '#fff', fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{chukker}</span>
                 </>}
               </div>
@@ -523,7 +523,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
               <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_away?.name}</p>
-              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>H: {match.team_away?.handicap ?? 0}</p>
+              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_away?.handicap ?? 0}</p>
               <FlapScore
                 score={awayGoals}
                 highlight={canchMode}
@@ -541,12 +541,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       {isAdmin && match.status !== 'finished' && (
         <div style={{ padding: '0 16px 16px' }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
-          <p style={{ color: '#d4a0b0', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
+          <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
 
           {/* Chukker */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
-            <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Chukker:</span>
-            <input style={{ background: '#2A0A12', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+            <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Tiempo:</span>
+            <input style={{ background: '#062B14', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
               type="number" min={1} max={tournament.chukkers_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
           </div>
 
@@ -559,7 +559,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_home_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -573,7 +573,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_away_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_away_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -585,7 +585,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             {goals.length > 0 && (
               <button onClick={removeLastGoal}
-                style={{ flex: 1, background: 'linear-gradient(135deg, #2A0A12, #3D1020)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                style={{ flex: 1, background: 'linear-gradient(135deg, #062B14, #3D1020)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 Deshacer
               </button>
             )}
@@ -605,12 +605,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             {goals.map((g, i) => (
               <div key={g.id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                  <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>#{i + 1} Ch.{g.chukker}</span>
+                  <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>#{i + 1} T.{g.chukker}</span>
                   <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: g.player_id ? '#fff' : '#fb923c' }}>
                     {g.player?.name ?? '⚡ Sin asignar'}
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 80, justifyContent: 'flex-end' }}>
-                    <span style={{ color: '#d4a0b0', fontSize: 11 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
+                    <span style={{ color: '#a8d5b5', fontSize: 11 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
                     {isAdmin && (
                       <button onClick={() => setEditingGoalId(editingGoalId === g.id ? null : g.id)}
                         style={{ background: 'none', border: `1px solid ${gold}44`, borderRadius: 6, padding: '2px 8px', color: gold, cursor: 'pointer', fontSize: 11 }}>
@@ -622,13 +622,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
                 {/* Panel de reasignación inline */}
                 {editingGoalId === g.id && isAdmin && (
-                  <div style={{ background: '#1a0808', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                  <div style={{ background: '#061a0e', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
                     <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                       {players.filter(p => p.team_id === g.team_id).map(player => (
                         <button key={player.id}
                           onClick={() => reassignGoal(g.id, player.id)}
-                          style={{ background: g.player_id === player.id ? gold : '#2A0A12', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#4A0B1E' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
+                          style={{ background: g.player_id === player.id ? gold : '#062B14', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
                           {player.name}
                         </button>
                       ))}
@@ -646,7 +646,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>JUGADOR DESTACADO</p>
         {mvpOfficial ? (
           <div style={{ background: 'rgba(30,5,15,0.9)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
-            <p style={{ color: '#d4a0b0', fontSize: 12, marginBottom: 4 }}>Destacado oficial</p>
+            <p style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 4 }}>Destacado oficial</p>
             <p style={{ fontSize: 20, fontWeight: 800, color: gold, fontFamily: 'Georgia, serif' }}>⭐ {mvpOfficial.player?.name}</p>
           </div>
         ) : (
@@ -669,7 +669,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                 {players.map(player => (
                   <button key={player.id}
                     onClick={() => setOfficialMvp(player.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #1a0808 0%, #2a1010 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
                     <Avatar url={player.photo_url} name={player.name} size={32} />
                     <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
                     <span style={{ color: gold, fontSize: 12 }}>{getMvpVoteCount(player.id)} votos</span>

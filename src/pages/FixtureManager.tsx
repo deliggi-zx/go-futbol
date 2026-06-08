@@ -101,14 +101,14 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
   const activeMatches = matches.filter(m => m.status !== 'pending')
 
   const styles = {
-    container: { minHeight: '100vh', background: '#6B0F2B', color: '#fff' },
-    header: { background: '#4A0B1E', padding: '16px', borderBottom: '1px solid #8B1A3A' },
+    container: { minHeight: '100vh', background: '#0A3D1F', color: '#fff' },
+    header: { background: '#0D4F28', padding: '16px', borderBottom: '1px solid #1A6B35' },
     section: { padding: '16px' },
-    card: { background: '#4A0B1E', borderRadius: 12, padding: 14, marginBottom: 8, border: '1px solid #8B1A3A' },
-    input: { width: '100%', background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const },
-    select: { width: '100%', background: '#6B0F2B', border: '1px solid #8B1A3A', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const },
-    btn: (color: string) => ({ background: color, color: color === '#C9A84C' ? '#4A0B1E' : '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 13 }),
-    label: { color: '#d4a0b0', fontSize: 12, display: 'block', marginBottom: 4, marginTop: 10 },
+    card: { background: '#0D4F28', borderRadius: 12, padding: 14, marginBottom: 8, border: '1px solid #1A6B35' },
+    input: { width: '100%', background: '#0A3D1F', border: '1px solid #1A6B35', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const },
+    select: { width: '100%', background: '#0A3D1F', border: '1px solid #1A6B35', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const },
+    btn: (color: string) => ({ background: color, color: color === '#C9A84C' ? '#0D4F28' : '#fff', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 700, fontSize: 13 }),
+    label: { color: '#a8d5b5', fontSize: 12, display: 'block', marginBottom: 4, marginTop: 10 },
     stageBadge: (stage: string) => ({
       display: 'inline-block', padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
       background: stage === 'group' ? '#1e40af' : stage === 'semi' ? '#7e22ce' : stage === 'final' ? '#b45309' : stage === 'third' ? '#166534' : '#334155',
@@ -119,7 +119,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#d4a0b0', cursor: 'pointer', fontSize: 15, marginBottom: 8, padding: 0 }}>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 15, marginBottom: 8, padding: 0 }}>
           Volver
         </button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -131,7 +131,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
       {/* Formulario agregar/editar */}
       {showAddForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 16 }}>
-          <div style={{ background: '#4A0B1E', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, border: '1px solid #8B1A3A', maxHeight: '90vh', overflowY: 'auto' as const }}>
+          <div style={{ background: '#0D4F28', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, border: '1px solid #1A6B35', maxHeight: '90vh', overflowY: 'auto' as const }}>
             <h3 style={{ color: '#C9A84C', fontWeight: 700, fontSize: 16, marginBottom: 16, marginTop: 0 }}>
               {editingMatch ? 'Editar partido' : 'Nuevo partido'}
             </h3>
@@ -164,7 +164,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
             <input style={styles.input} type="number" min={1} max={20} value={formRound} onChange={e => setFormRound(Number(e.target.value))} />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 20 }}>
-              <button onClick={() => { setShowAddForm(false); setEditingMatch(null) }} style={styles.btn('#8B1A3A')}>Cancelar</button>
+              <button onClick={() => { setShowAddForm(false); setEditingMatch(null) }} style={styles.btn('#1A6B35')}>Cancelar</button>
               <button onClick={saveMatch} disabled={saving} style={{ ...styles.btn('#C9A84C'), flex: 1 }}>
                 {saving ? 'Guardando...' : editingMatch ? 'Guardar cambios' : 'Agregar partido'}
               </button>
@@ -179,7 +179,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
           PENDIENTES ({pendingMatches.length})
         </p>
         {pendingMatches.length === 0 && (
-          <p style={{ color: '#d4a0b0', fontSize: 13, marginBottom: 16 }}>No hay partidos pendientes.</p>
+          <p style={{ color: '#a8d5b5', fontSize: 13, marginBottom: 16 }}>No hay partidos pendientes.</p>
         )}
         {pendingMatches.map(match => (
           <div key={match.id} style={styles.card}>
@@ -189,12 +189,12 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{match.team_home?.name ?? 'Por definir'}</span>
-              <span style={{ color: '#d4a0b0', fontSize: 12 }}>vs</span>
+              <span style={{ color: '#a8d5b5', fontSize: 12 }}>vs</span>
               <span style={{ fontWeight: 700, fontSize: 14 }}>{match.team_away?.name ?? 'Por definir'}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
               <button onClick={() => openEdit(match)} style={styles.btn('#334155')}>Editar</button>
-              <button onClick={() => deleteMatch(match.id)} style={styles.btn('#8B1A3A')}>Eliminar</button>
+              <button onClick={() => deleteMatch(match.id)} style={styles.btn('#1A6B35')}>Eliminar</button>
               {match.team_home_id && match.team_away_id && (
                 <>
                   <button onClick={() => markWalkover(match, match.team_home_id)} style={styles.btn('#166534')}>
@@ -223,7 +223,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{match.team_home?.name}</span>
-                  <span style={{ color: '#d4a0b0', fontSize: 12 }}>
+                  <span style={{ color: '#a8d5b5', fontSize: 12 }}>
                     {match.status === 'live' ? 'En vivo' : 'Finalizado'}
                   </span>
                   <span style={{ fontWeight: 700, fontSize: 14 }}>{match.team_away?.name}</span>

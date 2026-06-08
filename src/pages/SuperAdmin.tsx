@@ -166,7 +166,7 @@ export default function SuperAdmin() {
         <input style={styles.input} value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ej: La Dolfina" />
         <label style={styles.label}>Slug (URL)</label>
         <input style={styles.input} value={newSlug} onChange={e => setNewSlug(e.target.value.toLowerCase().replace(/\s/g, '-'))} placeholder="Ej: ladolfina" />
-        <p style={{ color: '#64748b', fontSize: 11, marginTop: -8, marginBottom: 12 }}>URL pública: gopolo.app/{newSlug || 'slug'}</p>
+        <p style={{ color: '#64748b', fontSize: 11, marginTop: -8, marginBottom: 12 }}>URL pública: gofutbol.app/{newSlug || 'slug'}</p>
         <label style={styles.label}>Email del admin</label>
         <input style={styles.input} type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="admin@club.com" />
         <label style={styles.label}>Contraseña provisoria</label>
@@ -187,7 +187,7 @@ export default function SuperAdmin() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <p style={{ margin: 0, fontWeight: 800, color: '#C9A84C', fontSize: 16 }}>⚙️ Go Polo — Superadmin</p>
+        <p style={{ margin: 0, fontWeight: 800, color: '#C9A84C', fontSize: 16 }}>⚙️ Go Fútbol — Superadmin</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button style={styles.btn('#1e40af')} onClick={() => setScreen('create')}>+ Nuevo cliente</button>
           <button style={styles.btn('#334155')} onClick={handleLogout}>Salir</button>
@@ -200,7 +200,7 @@ export default function SuperAdmin() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ fontWeight: 700, fontSize: 15, margin: '0 0 4px', color: '#fff' }}>{org.name}</p>
-                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 8px' }}>gopolo.app/{org.slug}</p>
+                <p style={{ color: '#64748b', fontSize: 12, margin: '0 0 8px' }}>gofutbol.app/{org.slug}</p>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' as const }}>
                   <span style={styles.badge(org.status)}>{org.status === 'active' ? '✓ Activo' : '✗ Suspendido'}</span>
                   {editingOrg?.id === org.id ? (
