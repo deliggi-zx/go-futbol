@@ -106,6 +106,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const soundOnRef = useRef(true)
 
   const [clock, setClock] = useState<any | null>(null)
+  const clockRef = useRef<any | null>(null)
   const [liveElapsed, setLiveElapsed] = useState(0)
   const bellFiredRef = useRef(false)
   const prevClockChukkerRef = useRef<number | null>(null)
@@ -122,7 +123,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function loadClock() {
-    const { data } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
+    const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
+    if (error) { console.error('[Clock] ERROR loadClock:', error); return }
+    console.log('[Clock] loadClock data=', data)
+    clockRef.current = data
     setClock(data)
   }
 
@@ -260,46 +264,75 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function startClock(chukkerNum: number) {
+    console.log('[Clock] startClock, chukkerNum=', chukkerNum, 'clock=', clock)
     const now = new Date().toISOString()
+    bellFiredRef.current = false
     if (clock) {
-      await supabase.from('match_clock').update({
-        chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now,
-      }).eq('match_id', match.id)
+      const { data, error } = await supabase.from('match_clock')
+        .update({ chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
+        .eq('id', clock.id)
+        .select()
+        .single()
+      if (error) { console.error('[Clock] ERROR startClock update:', error); alert(`Error: ${error.message}`); return }
+      console.log('[Clock] startClock update OK, data=', data)
+      clockRef.current = data; setClock(data)
     } else {
-      await supabase.from('match_clock').insert({
-        match_id: match.id, chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now,
-      })
+      const { data, error } = await supabase.from('match_clock')
+        .insert({ match_id: match.id, chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
+        .select()
+        .single()
+      if (error) { console.error('[Clock] ERROR startClock insert:', error); alert(`Error: ${error.message}`); return }
+      console.log('[Clock] startClock insert OK, data=', data)
+      clockRef.current = data; setClock(data)
     }
-    await supabase.from('matches').update({ status: 'live', chukker_current: chukkerNum }).eq('id', match.id)
-    await loadClock()
+    const { error: matchErr } = await supabase.from('matches').update({ status: 'live', chukker_current: chukkerNum }).eq('id', match.id)
+    if (matchErr) console.error('[Clock] ERROR match update:', matchErr)
   }
 
   async function pauseClock() {
+    if (!clock) return
+    console.log('[Clock] pauseClock, clock.id=', clock.id, 'started_at=', clock.started_at)
     const now = Date.now() / 1000
     const startedAt = new Date(clock.started_at).getTime() / 1000
     const currentElapsed = clock.elapsed_seconds + (now - startedAt)
-    await supabase.from('match_clock').update({
-      status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString(),
-    }).eq('match_id', match.id)
-    await loadClock()
+    const { data, error } = await supabase.from('match_clock')
+      .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
+      .eq('id', clock.id)
+      .select()
+      .single()
+    if (error) { console.error('[Clock] ERROR pauseClock:', error); return }
+    console.log('[Clock] pauseClock OK, data=', data)
+    clockRef.current = data; setClock(data)
   }
 
   async function resumeClock() {
-    await supabase.from('match_clock').update({
-      status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    }).eq('match_id', match.id)
-    await loadClock()
+    if (!clock) return
+    console.log('[Clock] resumeClock, clock.id=', clock.id)
+    const { data, error } = await supabase.from('match_clock')
+      .update({ status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', clock.id)
+      .select()
+      .single()
+    if (error) { console.error('[Clock] ERROR resumeClock:', error); return }
+    console.log('[Clock] resumeClock OK, data=', data)
+    clockRef.current = data; setClock(data)
   }
 
   async function stopClock() {
-    const now = Date.now() / 1000
+    if (!clock) return
+    console.log('[Clock] stopClock, clock.id=', clock.id, 'status=', clock.status)
+    // Usar liveElapsed para capturar el tiempo exacto si está corriendo
     const currentElapsed = clock.status === 'running'
-      ? clock.elapsed_seconds + (now - new Date(clock.started_at).getTime() / 1000)
+      ? liveElapsed
       : clock.elapsed_seconds
-    await supabase.from('match_clock').update({
-      status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString(),
-    }).eq('match_id', match.id)
-    await loadClock()
+    const { data, error } = await supabase.from('match_clock')
+      .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
+      .eq('id', clock.id)
+      .select()
+      .single()
+    if (error) { console.error('[Clock] ERROR stopClock:', error); return }
+    console.log('[Clock] stopClock OK, data=', data)
+    clockRef.current = data; setClock(data)
   }
 
   function getMvpVoteCount(playerId: string) {
@@ -320,7 +353,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   // Clock display values for stopped state
   const stoppedRemaining = clock ? 450 - clock.elapsed_seconds : 0
-  const stoppedIsOvertime = stoppedRemaining < 0
 
   return (
     <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#3D0A1A', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
@@ -365,7 +397,96 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       {/* Marcador — tappable para admin */}
       <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #8B6914, 0 8px 32px rgba(0,0,0,0.8)`, position: 'relative' as const }}>
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
-        <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '20px 16px 24px' }}>
+        <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '16px 16px 24px' }}>
+
+          {/* Cronómetro — centrado encima del marcador, visible para todos */}
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            {clock ? (
+              <>
+                <div style={{ fontSize: 10, color: `${gold}aa`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 4, textTransform: 'uppercase' as const }}>
+                  Chukker {clock.chukker}
+                </div>
+                <div style={{
+                  fontSize: clock.status === 'stopped' ? 36 : 52,
+                  fontWeight: 900, fontFamily: 'monospace', letterSpacing: 3,
+                  color: clockIsOvertime ? '#ef4444' : clock.status === 'stopped' ? `${gold}cc` : '#fff',
+                  textShadow: clockIsOvertime
+                    ? '0 0 28px rgba(239,68,68,0.7)'
+                    : clock.status === 'stopped'
+                      ? 'none'
+                      : '0 0 16px rgba(255,255,255,0.2)',
+                  transition: 'color 0.3s, text-shadow 0.3s',
+                  opacity: clock.status === 'stopped' ? 0.75 : 1,
+                }}>
+                  {clockIsOvertime ? '+' : ''}{formatClockTime(clock.status === 'stopped' ? stoppedRemaining : clockRemaining)}
+                </div>
+                <div style={{ fontSize: 10, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 4, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
+                  {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ CHUKKER FINALIZADO'}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 11, color: `${gold}55`, fontFamily: 'Georgia, serif', letterSpacing: 2, padding: '4px 0' }}>
+                — LISTO PARA INICIAR —
+              </div>
+            )}
+          </div>
+
+          {/* Botón cronómetro dentro del recuadro — solo admin */}
+          {isAdmin && match.status !== 'finished' && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
+              {/* Estado: sin reloj → Iniciar Chukker */}
+              {!clock && (
+                <button onClick={() => { console.log('[Clock] click Iniciar Chukker'); startClock(1) }}
+                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
+                  Iniciar Chukker
+                </button>
+              )}
+              {/* Estado: corriendo → Pausar / Finalizar Chukker (cuando llega a 0) */}
+              {clock?.status === 'running' && (
+                clockRemaining <= 0 ? (
+                  <button onClick={stopClock}
+                    style={{ background: 'linear-gradient(135deg, #3D1020, #5A0A20)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
+                    Finalizar Chukker
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={pauseClock}
+                      style={{ background: 'linear-gradient(135deg, #1a1400, #2a2000)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      Pausar
+                    </button>
+                    <button onClick={stopClock}
+                      style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      Finalizar Chukker
+                    </button>
+                  </>
+                )
+              )}
+              {/* Estado: pausado → Reanudar / Finalizar */}
+              {clock?.status === 'paused' && (
+                <>
+                  <button onClick={resumeClock}
+                    style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    Reanudar
+                  </button>
+                  <button onClick={stopClock}
+                    style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    Finalizar Chukker
+                  </button>
+                </>
+              )}
+              {/* Estado: detenido → Iniciar siguiente chukker */}
+              {clock?.status === 'stopped' && (
+                <button onClick={() => startClock(clock.chukker + 1)}
+                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
+                  Iniciar Chukker {clock.chukker + 1}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Separador */}
+          <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${gold}33, transparent)`, marginBottom: 16 }} />
+
           <div style={{ display: 'flex', alignItems: 'center' }}>
 
             {/* Equipo local */}
@@ -407,83 +528,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               />
             </div>
           </div>
-
-          {/* Cronómetro — visible para todos */}
-          <div style={{ textAlign: 'center', paddingTop: 20, paddingBottom: 4 }}>
-            {clock ? (
-              <>
-                <div style={{ fontSize: 10, color: `${gold}99`, letterSpacing: 2, fontFamily: 'Georgia, serif', marginBottom: 6, textTransform: 'uppercase' as const }}>
-                  Chukker {clock.chukker}
-                </div>
-                {clock.status === 'stopped' ? (
-                  <div style={{ fontSize: 34, fontWeight: 900, fontFamily: 'monospace', color: stoppedIsOvertime ? '#ef4444' : gold, opacity: 0.85 }}>
-                    {stoppedIsOvertime ? '+' : ''}{formatClockTime(stoppedRemaining)}
-                  </div>
-                ) : (
-                  <div style={{
-                    fontSize: 48, fontWeight: 900, fontFamily: 'monospace', letterSpacing: 2,
-                    color: clockIsOvertime ? '#ef4444' : '#fff',
-                    textShadow: clockIsOvertime ? '0 0 24px rgba(239,68,68,0.6)' : '0 0 12px rgba(255,255,255,0.15)',
-                    transition: 'color 0.3s, text-shadow 0.3s',
-                  }}>
-                    {clockIsOvertime ? '+' : ''}{formatClockTime(clockRemaining)}
-                  </div>
-                )}
-                <div style={{ fontSize: 10, color: '#555', marginTop: 6, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
-                  {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ FINALIZADO'}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 12, color: '#444', fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                Listo para iniciar
-              </div>
-            )}
-          </div>
         </div>
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
       </div>
-
-      {/* Controles del cronómetro — solo admin, partido no finalizado */}
-      {isAdmin && match.status !== 'finished' && (
-        <div style={{ padding: '0 16px 8px', display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' as const }}>
-          {!clock && (
-            <button onClick={() => startClock(1)}
-              style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-              Iniciar Chukker 1
-            </button>
-          )}
-          {clock?.status === 'running' && (
-            <>
-              <button onClick={pauseClock}
-                style={{ background: 'linear-gradient(135deg, #1a1400, #2a2000)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                Pausar
-              </button>
-              <button onClick={stopClock}
-                style={{ background: 'linear-gradient(135deg, #2A0A12, #3D1020)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: `${gold}cc`, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                Finalizar Chukker
-              </button>
-            </>
-          )}
-          {clock?.status === 'paused' && (
-            <>
-              <button onClick={resumeClock}
-                style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                Reanudar
-              </button>
-              <button onClick={stopClock}
-                style={{ background: 'linear-gradient(135deg, #2A0A12, #3D1020)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: `${gold}cc`, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                Finalizar Chukker
-              </button>
-            </>
-          )}
-          {clock?.status === 'stopped' && (
-            <button onClick={() => startClock(clock.chukker + 1)}
-              style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-              Iniciar Chukker {clock.chukker + 1}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Panel asignación de jugadores — solo admin, solo partido en vivo */}
       {isAdmin && match.status !== 'finished' && (
