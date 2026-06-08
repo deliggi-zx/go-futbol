@@ -270,7 +270,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (clock) {
       const { data, error } = await supabase.from('match_clock')
         .update({ chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
-        .eq('id', clock.id)
+        .eq('match_id', match.id)
         .select()
         .single()
       if (error) { console.error('[Clock] ERROR startClock update:', error); alert(`Error: ${error.message}`); return }
@@ -292,15 +292,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function pauseClock() {
     console.log('[Clock] pauseClock CALLED, clock=', clock)
     if (!clock) { console.warn('[Clock] pauseClock abortado: clock es null'); return }
-    if (!clock.id) { console.error('[Clock] pauseClock abortado: clock.id es undefined', clock); alert('Error: clock.id no existe'); return }
-    console.log('[Clock] pauseClock, clock.id=', clock.id, 'started_at=', clock.started_at)
+    console.log('[Clock] pauseClock, match_id=', match.id, 'started_at=', clock.started_at)
     const now = Date.now() / 1000
     const startedAt = new Date(clock.started_at).getTime() / 1000
     const currentElapsed = clock.elapsed_seconds + (now - startedAt)
     console.log('[Clock] pauseClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
-      .eq('id', clock.id)
+      .eq('match_id', match.id)
       .select()
       .single()
     if (error) { console.error('[Clock] ERROR pauseClock:', error); alert(`Error al pausar: ${error.message} (code: ${error.code})`); return }
@@ -310,10 +309,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function resumeClock() {
     if (!clock) return
-    console.log('[Clock] resumeClock, clock.id=', clock.id)
+    console.log('[Clock] resumeClock, match_id=', match.id)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', clock.id)
+      .eq('match_id', match.id)
       .select()
       .single()
     if (error) { console.error('[Clock] ERROR resumeClock:', error); return }
@@ -324,15 +323,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function stopClock() {
     console.log('[Clock] stopClock CALLED, clock=', clock)
     if (!clock) { console.warn('[Clock] stopClock abortado: clock es null'); return }
-    if (!clock.id) { console.error('[Clock] stopClock abortado: clock.id es undefined', clock); alert('Error: clock.id no existe'); return }
-    console.log('[Clock] stopClock, clock.id=', clock.id, 'status=', clock.status)
+    console.log('[Clock] stopClock, match_id=', match.id, 'status=', clock.status)
     const currentElapsed = clock.status === 'running'
       ? liveElapsed
       : clock.elapsed_seconds
     console.log('[Clock] stopClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
-      .eq('id', clock.id)
+      .eq('match_id', match.id)
       .select()
       .single()
     if (error) { console.error('[Clock] ERROR stopClock:', error); alert(`Error al finalizar chukker: ${error.message} (code: ${error.code})`); return }
