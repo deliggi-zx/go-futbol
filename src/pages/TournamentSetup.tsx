@@ -42,6 +42,7 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   const [newAward, setNewAward] = useState('')
   const [saving, setSaving] = useState(false)
   const [scorerPassword, setScorerPassword] = useState('')
+  const [chukkerDuration, setChukkerDuration] = useState(8)
   const [step, setStep] = useState<'config' | 'teams' | 'awards'>('config')
 
   const { groupNames } = getGroupsConfig(teamCount, format)
@@ -163,7 +164,7 @@ function downloadTemplate() {
     try {
       const { data: tournament } = await supabase
         .from('tournaments')
-        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null })
+        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
         .select().single()
 
       if (awards.length > 0) {
@@ -309,6 +310,10 @@ function downloadTemplate() {
 
           <label style={{ ...styles.label, marginTop: 16 }}>Chukkers por partido</label>
           <input style={styles.input} type="number" min={1} max={8} value={chukkers} onChange={e => setChukkers(Number(e.target.value))} />
+
+          <label style={{ ...styles.label, marginTop: 16 }}>Duración por chukker (minutos)</label>
+          <input style={styles.input} type="number" min={1} max={10} value={chukkerDuration} onChange={e => setChukkerDuration(Number(e.target.value))} />
+          <p style={{ color: '#d4a0b0', fontSize: 11, marginTop: 4 }}>Estándar: 7.5 min. Para demos o categorías juveniles podés reducirlo.</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Contraseña para cargadores de goles</label>
           <input style={styles.input} value={scorerPassword} onChange={e => setScorerPassword(e.target.value)} placeholder="Ej: polo2026" />

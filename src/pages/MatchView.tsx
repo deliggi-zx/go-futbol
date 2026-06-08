@@ -170,7 +170,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         ? clock.elapsed_seconds + (Date.now() / 1000 - new Date(clock.started_at).getTime() / 1000)
         : clock.elapsed_seconds
       // Pre-fire bell if we loaded mid-game past the 30s warning mark
-      bellFiredRef.current = initialElapsed >= 420
+      bellFiredRef.current = initialElapsed >= (chukkerSeconds - 30)
     }
   }, [clock?.chukker])
 
@@ -182,7 +182,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       const startedAt = new Date(clock.started_at).getTime() / 1000
       const elapsed = clock.elapsed_seconds + (now - startedAt)
       setLiveElapsed(elapsed)
-      const remaining = 450 - elapsed
+      const remaining = chukkerSeconds - elapsed
       if (remaining <= 30 && remaining > 0 && !bellFiredRef.current) {
         bellFiredRef.current = true
         ringBell()
@@ -194,7 +194,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }, [clock])
 
   const clockElapsed = clock?.status === 'running' ? liveElapsed : (clock?.elapsed_seconds ?? 0)
-  const clockRemaining = 450 - clockElapsed
+  const clockRemaining = chukkerSeconds - clockElapsed
   const clockIsOvertime = clockRemaining < 0
 
   function formatClockTime(seconds: number): string {
@@ -342,6 +342,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     return mvpVotes.filter(v => v.player_id === playerId).length
   }
 
+  const chukkerSeconds = (tournament.chukker_duration_minutes ?? 8) * 60
   const gold = '#C9A84C'
   const goldLight = '#E8C96A'
   const darkBg = '#2A0A12'
@@ -355,7 +356,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const qrUrl = `${window.location.origin}/?match=${match.id}`
 
   // Clock display values for stopped state
-  const stoppedRemaining = clock ? 450 - clock.elapsed_seconds : 0
+  const stoppedRemaining = clock ? chukkerSeconds - clock.elapsed_seconds : 0
 
   return (
     <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#3D0A1A', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
