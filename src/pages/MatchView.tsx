@@ -295,7 +295,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     console.log('[Clock] pauseClock, match_id=', match.id, 'started_at=', clock.started_at)
     const now = Date.now() / 1000
     const startedAt = new Date(clock.started_at).getTime() / 1000
-    const currentElapsed = clock.elapsed_seconds + (now - startedAt)
+    const currentElapsed = Math.floor(clock.elapsed_seconds + (now - startedAt))
     console.log('[Clock] pauseClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
@@ -324,9 +324,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     console.log('[Clock] stopClock CALLED, clock=', clock)
     if (!clock) { console.warn('[Clock] stopClock abortado: clock es null'); return }
     console.log('[Clock] stopClock, match_id=', match.id, 'status=', clock.status)
-    const currentElapsed = clock.status === 'running'
+    const currentElapsed = Math.floor(clock.status === 'running'
       ? liveElapsed
-      : clock.elapsed_seconds
+      : clock.elapsed_seconds)
     console.log('[Clock] stopClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
