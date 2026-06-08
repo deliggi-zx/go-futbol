@@ -290,17 +290,20 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function pauseClock() {
-    if (!clock) return
+    console.log('[Clock] pauseClock CALLED, clock=', clock)
+    if (!clock) { console.warn('[Clock] pauseClock abortado: clock es null'); return }
+    if (!clock.id) { console.error('[Clock] pauseClock abortado: clock.id es undefined', clock); alert('Error: clock.id no existe'); return }
     console.log('[Clock] pauseClock, clock.id=', clock.id, 'started_at=', clock.started_at)
     const now = Date.now() / 1000
     const startedAt = new Date(clock.started_at).getTime() / 1000
     const currentElapsed = clock.elapsed_seconds + (now - startedAt)
+    console.log('[Clock] pauseClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
       .eq('id', clock.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR pauseClock:', error); return }
+    if (error) { console.error('[Clock] ERROR pauseClock:', error); alert(`Error al pausar: ${error.message} (code: ${error.code})`); return }
     console.log('[Clock] pauseClock OK, data=', data)
     clockRef.current = data; setClock(data)
   }
@@ -319,18 +322,20 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function stopClock() {
-    if (!clock) return
+    console.log('[Clock] stopClock CALLED, clock=', clock)
+    if (!clock) { console.warn('[Clock] stopClock abortado: clock es null'); return }
+    if (!clock.id) { console.error('[Clock] stopClock abortado: clock.id es undefined', clock); alert('Error: clock.id no existe'); return }
     console.log('[Clock] stopClock, clock.id=', clock.id, 'status=', clock.status)
-    // Usar liveElapsed para capturar el tiempo exacto si está corriendo
     const currentElapsed = clock.status === 'running'
       ? liveElapsed
       : clock.elapsed_seconds
+    console.log('[Clock] stopClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
       .eq('id', clock.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR stopClock:', error); return }
+    if (error) { console.error('[Clock] ERROR stopClock:', error); alert(`Error al finalizar chukker: ${error.message} (code: ${error.code})`); return }
     console.log('[Clock] stopClock OK, data=', data)
     clockRef.current = data; setClock(data)
   }
