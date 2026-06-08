@@ -111,6 +111,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const bellFiredRef = useRef(false)
   const prevClockChukkerRef = useRef<number | null>(null)
 
+  const chukkerSeconds = (tournament.chukker_duration_minutes ?? 8) * 60
+
   const deviceId = (() => {
     let id = localStorage.getItem('tribu_device_id')
     if (!id) { id = crypto.randomUUID(); localStorage.setItem('tribu_device_id', id) }
@@ -342,7 +344,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     return mvpVotes.filter(v => v.player_id === playerId).length
   }
 
-  const chukkerSeconds = (tournament.chukker_duration_minutes ?? 8) * 60
   const gold = '#C9A84C'
   const goldLight = '#E8C96A'
   const darkBg = '#2A0A12'
