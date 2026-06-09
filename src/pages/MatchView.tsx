@@ -73,7 +73,6 @@ function FlapScore({ score, highlight = false, onTap, isAdmin, pendingCount = 0 
         style={{
           display: 'flex', gap: 6,
           cursor: isAdmin && onTap ? 'pointer' : 'default',
-          transform: isAdmin && onTap ? 'scale(1)' : 'scale(1)',
           transition: 'transform 0.1s',
         }}
       >
@@ -114,8 +113,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const chukkerSeconds = (tournament.chukker_duration_minutes ?? 8) * 60
 
   const deviceId = (() => {
-    let id = localStorage.getItem('tribu_device_id')
-    if (!id) { id = crypto.randomUUID(); localStorage.setItem('tribu_device_id', id) }
+    let id = localStorage.getItem('gofutbol_device_id')
+    if (!id) { id = crypto.randomUUID(); localStorage.setItem('gofutbol_device_id', id) }
     return id
   })()
 
@@ -126,8 +125,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function loadClock() {
     const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
-    if (error) { console.error('[Clock] ERROR loadClock:', error); return }
-    console.log('[Clock] loadClock data=', data)
+    if (error) return
     clockRef.current = data
     setClock(data)
   }
@@ -162,7 +160,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setLoading(false)
   }
 
-  // Sync chukker state from clock and reset bell on new chukker
   useEffect(() => {
     if (!clock) return
     if (clock.chukker !== prevClockChukkerRef.current) {
@@ -171,12 +168,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       const initialElapsed = clock.status === 'running'
         ? clock.elapsed_seconds + (Date.now() / 1000 - new Date(clock.started_at).getTime() / 1000)
         : clock.elapsed_seconds
-      // Pre-fire bell if we loaded mid-game past the 30s warning mark
       bellFiredRef.current = initialElapsed >= (chukkerSeconds - 30)
     }
   }, [clock?.chukker])
 
-  // Live ticker: updates every 200ms while clock is running
   useEffect(() => {
     if (clock?.status !== 'running') return
     const tick = () => {
@@ -212,7 +207,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const awayPending = goals.filter(g => g.team_id === match.team_away_id && !g.player_id).length
   const hasVoted = mvpVotes.some(v => v.device_id === deviceId) || localStorage.getItem(`voted_match_${match.id}`) === 'true'
 
-  // Sumar gol sin asignar jugador
   async function addGoalNoPlayer(teamId: string) {
     if (saving) return
     setSaving(true)
@@ -222,7 +216,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setSaving(false)
   }
 
-  // Asignar jugador al gol pendiente más antiguo del equipo
   async function assignPlayer(playerId: string, teamId: string) {
     const pending = goals
       .filter(g => g.team_id === teamId && !g.player_id)
@@ -232,7 +225,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     await loadData()
   }
 
-  // Reasignar jugador a un gol específico (para edición)
   async function reassignGoal(goalId: string, playerId: string) {
     await supabase.from('goals').update({ player_id: playerId }).eq('id', goalId)
     setEditingGoalId(null)
@@ -266,7 +258,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function startClock(chukkerNum: number) {
-    console.log('[Clock] startClock, chukkerNum=', chukkerNum, 'clock=', clock)
     const now = new Date().toISOString()
     bellFiredRef.current = false
     if (clock) {
@@ -275,68 +266,53 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         .eq('match_id', match.id)
         .select()
         .single()
-      if (error) { console.error('[Clock] ERROR startClock update:', error); alert(`Error: ${error.message}`); return }
-      console.log('[Clock] startClock update OK, data=', data)
+      if (error) { alert(`Error: ${error.message}`); return }
       clockRef.current = data; setClock(data)
     } else {
       const { data, error } = await supabase.from('match_clock')
         .insert({ match_id: match.id, chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
         .select()
         .single()
-      if (error) { console.error('[Clock] ERROR startClock insert:', error); alert(`Error: ${error.message}`); return }
-      console.log('[Clock] startClock insert OK, data=', data)
+      if (error) { alert(`Error: ${error.message}`); return }
       clockRef.current = data; setClock(data)
     }
-    const { error: matchErr } = await supabase.from('matches').update({ status: 'live', chukker_current: chukkerNum }).eq('id', match.id)
-    if (matchErr) console.error('[Clock] ERROR match update:', matchErr)
+    await supabase.from('matches').update({ status: 'live', chukker_current: chukkerNum }).eq('id', match.id)
   }
 
   async function pauseClock() {
-    console.log('[Clock] pauseClock CALLED, clock=', clock)
-    if (!clock) { console.warn('[Clock] pauseClock abortado: clock es null'); return }
-    console.log('[Clock] pauseClock, match_id=', match.id, 'started_at=', clock.started_at)
+    if (!clock) return
     const now = Date.now() / 1000
     const startedAt = new Date(clock.started_at).getTime() / 1000
     const currentElapsed = Math.floor(clock.elapsed_seconds + (now - startedAt))
-    console.log('[Clock] pauseClock elapsed calculado=', currentElapsed)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
       .eq('match_id', match.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR pauseClock:', error); alert(`Error al pausar: ${error.message} (code: ${error.code})`); return }
-    console.log('[Clock] pauseClock OK, data=', data)
+    if (error) { alert(`Error al pausar: ${error.message}`); return }
     clockRef.current = data; setClock(data)
   }
 
   async function resumeClock() {
     if (!clock) return
-    console.log('[Clock] resumeClock, match_id=', match.id)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('match_id', match.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR resumeClock:', error); return }
-    console.log('[Clock] resumeClock OK, data=', data)
+    if (error) return
     clockRef.current = data; setClock(data)
   }
 
   async function stopClock() {
-    console.log('[Clock] stopClock CALLED, clock=', clock)
-    if (!clock) { console.warn('[Clock] stopClock abortado: clock es null'); return }
-    console.log('[Clock] stopClock, match_id=', match.id, 'status=', clock.status)
-    const currentElapsed = Math.floor(clock.status === 'running'
-      ? liveElapsed
-      : clock.elapsed_seconds)
-    console.log('[Clock] stopClock elapsed calculado=', currentElapsed)
+    if (!clock) return
+    const currentElapsed = Math.floor(clock.status === 'running' ? liveElapsed : clock.elapsed_seconds)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
       .eq('match_id', match.id)
       .select()
       .single()
-    if (error) { console.error('[Clock] ERROR stopClock:', error); alert(`Error al finalizar tiempo: ${error.message} (code: ${error.code})`); return }
-    console.log('[Clock] stopClock OK, data=', data)
+    if (error) { alert(`Error al finalizar tiempo: ${error.message}`); return }
     clockRef.current = data; setClock(data)
   }
 
@@ -355,15 +331,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   )
 
   const qrUrl = `${window.location.origin}/?match=${match.id}`
-
-  // Clock display values for stopped state
   const stoppedRemaining = clock ? chukkerSeconds - clock.elapsed_seconds : 0
 
   return (
-    <div style={{ minHeight: '100vh', background: canchMode ? '#0A0005' : '#0A3D1F', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
+    <div style={{ minHeight: '100vh', background: canchMode ? '#001a0a' : '#0A3D1F', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
 
       {/* Header */}
-      <div style={{ background: 'rgba(30,5,15,0.95)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
+      <div style={{ background: 'rgba(6,43,20,0.97)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
           ← Volver al fixture
         </button>
@@ -375,13 +349,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
-            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: '#062B14', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: darkBg, border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
             </button>
-            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : '#062B14', border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : darkBg, border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
               {canchMode ? 'Normal' : 'Cancha'}
             </button>
-            <button onClick={() => setShowQR(!showQR)} style={{ background: '#062B14', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={() => setShowQR(!showQR)} style={{ background: darkBg, border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
               QR
             </button>
           </div>
@@ -399,12 +373,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         </div>
       )}
 
-      {/* Marcador — tappable para admin */}
+      {/* Marcador */}
       <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #8B6914, 0 8px 32px rgba(0,0,0,0.8)`, position: 'relative' as const }}>
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
-        <div style={{ background: canchMode ? '#000' : 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)', padding: '16px 16px 24px' }}>
+        <div style={{ background: canchMode ? '#001a0a' : 'linear-gradient(160deg, #0a2810 0%, #071c0a 30%, #041208 60%, #071c0a 100%)', padding: '16px 16px 24px' }}>
 
-          {/* Cronómetro — centrado encima del marcador, visible para todos */}
+          {/* Cronómetro */}
           <div style={{ textAlign: 'center', marginBottom: 16 }}>
             {clock ? (
               <>
@@ -415,11 +389,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   fontSize: clock.status === 'stopped' ? 36 : 52,
                   fontWeight: 900, fontFamily: 'monospace', letterSpacing: 3,
                   color: clockIsOvertime ? '#ef4444' : clock.status === 'stopped' ? `${gold}cc` : '#fff',
-                  textShadow: clockIsOvertime
-                    ? '0 0 28px rgba(239,68,68,0.7)'
-                    : clock.status === 'stopped'
-                      ? 'none'
-                      : '0 0 16px rgba(255,255,255,0.2)',
+                  textShadow: clockIsOvertime ? '0 0 28px rgba(239,68,68,0.7)' : clock.status === 'stopped' ? 'none' : '0 0 16px rgba(255,255,255,0.2)',
                   transition: 'color 0.3s, text-shadow 0.3s',
                   opacity: clock.status === 'stopped' ? 0.75 : 1,
                 }}>
@@ -436,21 +406,19 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             )}
           </div>
 
-          {/* Botón cronómetro dentro del recuadro — solo admin */}
+          {/* Botones cronómetro — solo admin */}
           {isAdmin && match.status !== 'finished' && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
-              {/* Estado: sin reloj → Iniciar Chukker */}
               {!clock && (
-                <button onClick={() => { console.log('[Clock] click Iniciar Chukker'); startClock(1) }}
+                <button onClick={() => startClock(1)}
                   style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
                   Iniciar Tiempo
                 </button>
               )}
-              {/* Estado: corriendo → Pausar / Finalizar Chukker (cuando llega a 0) */}
               {clock?.status === 'running' && (
                 clockRemaining <= 0 ? (
                   <button onClick={stopClock}
-                    style={{ background: 'linear-gradient(135deg, #3D1020, #062B14)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
+                    style={{ background: 'linear-gradient(135deg, #1a0a0a, #062B14)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
                     Finalizar Tiempo
                   </button>
                 ) : (
@@ -466,7 +434,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   </>
                 )
               )}
-              {/* Estado: pausado → Reanudar / Finalizar */}
               {clock?.status === 'paused' && (
                 <>
                   <button onClick={resumeClock}
@@ -479,7 +446,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   </button>
                 </>
               )}
-              {/* Estado: detenido → Iniciar siguiente chukker */}
               {clock?.status === 'stopped' && (
                 <button onClick={() => startClock(clock.chukker + 1)}
                   style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
@@ -489,26 +455,18 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             </div>
           )}
 
-          {/* Separador */}
           <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${gold}33, transparent)`, marginBottom: 16 }} />
 
           <div style={{ display: 'flex', alignItems: 'center' }}>
-
             {/* Equipo local */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
               <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_home?.name}</p>
               <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_home?.handicap ?? 0}</p>
-              <FlapScore
-                score={homeGoals}
-                highlight={canchMode}
-                isAdmin={isAdmin && match.status !== 'finished'}
-                onTap={() => addGoalNoPlayer(match.team_home_id)}
-                pendingCount={homePending}
-              />
+              <FlapScore score={homeGoals} highlight={canchMode} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_home_id)} pendingCount={homePending} />
             </div>
 
-            {/* Chukker medallón */}
+            {/* Medallón tiempo */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 68, flexShrink: 0 }}>
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: match.status === 'live' ? `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: match.status === 'live' ? `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` : 'none' }}>
                 {match.status === 'live' && <>
@@ -524,33 +482,25 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
               <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_away?.name}</p>
               <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_away?.handicap ?? 0}</p>
-              <FlapScore
-                score={awayGoals}
-                highlight={canchMode}
-                isAdmin={isAdmin && match.status !== 'finished'}
-                onTap={() => addGoalNoPlayer(match.team_away_id)}
-                pendingCount={awayPending}
-              />
+              <FlapScore score={awayGoals} highlight={canchMode} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_away_id)} pendingCount={awayPending} />
             </div>
           </div>
         </div>
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
       </div>
 
-      {/* Panel asignación de jugadores — solo admin, solo partido en vivo */}
+      {/* Panel asignación de jugadores */}
       {isAdmin && match.status !== 'finished' && (
         <div style={{ padding: '0 16px 16px' }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
 
-          {/* Chukker */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
             <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Tiempo:</span>
-            <input style={{ background: '#062B14', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              type="number" min={1} max={tournament.chukkers_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
+            <input style={{ background: darkBg, border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+              type="number" min={1} max={tournament.periods_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
           </div>
 
-          {/* Jugadores */}
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <p style={{ color: homePending > 0 ? '#fb923c' : gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
@@ -559,7 +509,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_home_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'linear-gradient(135deg, #1a1a00 0%, #2a2800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -573,7 +523,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_away_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_away_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'linear-gradient(135deg, #1a0a00 0%, #2a1800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'linear-gradient(135deg, #1a1a00 0%, #2a2800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -581,11 +531,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             </div>
           </div>
 
-          {/* Botones acción */}
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             {goals.length > 0 && (
               <button onClick={removeLastGoal}
-                style={{ flex: 1, background: 'linear-gradient(135deg, #062B14, #3D1020)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                style={{ flex: 1, background: 'linear-gradient(135deg, #062B14, #0a3d1f)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 Deshacer
               </button>
             )}
@@ -601,7 +550,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       {goals.length > 0 && (
         <div style={{ padding: '0 16px 16px' }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>GOLES</p>
-          <div style={{ background: 'rgba(30,5,15,0.8)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
+          <div style={{ background: 'rgba(6,43,20,0.8)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
             {goals.map((g, i) => (
               <div key={g.id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
@@ -619,8 +568,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                     )}
                   </div>
                 </div>
-
-                {/* Panel de reasignación inline */}
                 {editingGoalId === g.id && isAdmin && (
                   <div style={{ background: '#061a0e', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
                     <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
@@ -628,7 +575,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                       {players.filter(p => p.team_id === g.team_id).map(player => (
                         <button key={player.id}
                           onClick={() => reassignGoal(g.id, player.id)}
-                          style={{ background: g.player_id === player.id ? gold : '#062B14', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
+                          style={{ background: g.player_id === player.id ? gold : darkBg, border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
                           {player.name}
                         </button>
                       ))}
@@ -645,7 +592,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       <div style={{ padding: '0 16px 32px' }}>
         <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>JUGADOR DESTACADO</p>
         {mvpOfficial ? (
-          <div style={{ background: 'rgba(30,5,15,0.9)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
+          <div style={{ background: 'rgba(6,43,20,0.9)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
             <p style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 4 }}>Destacado oficial</p>
             <p style={{ fontSize: 20, fontWeight: 800, color: gold, fontFamily: 'Georgia, serif' }}>⭐ {mvpOfficial.player?.name}</p>
           </div>

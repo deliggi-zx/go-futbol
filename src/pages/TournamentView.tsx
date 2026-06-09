@@ -396,7 +396,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           {/* Título */}
           <h1 style={{ fontSize: 22, fontWeight: 900, color: gold, margin: '60px 0 2px', fontFamily: 'Georgia, serif', textShadow: `0 2px 12px rgba(0,0,0,0.9), 0 0 20px rgba(201,168,76,0.3)`, letterSpacing: 1 }}>{tournament.name}</h1>
           <p style={{ color: '#a8d5b5', fontSize: 13, margin: '0 0 10px', fontFamily: 'Georgia, serif', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
-            {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.chukkers_per_match} tiempos
+            {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.periods_per_match} tiempos
           </p>
 
           {/* Botones admin */}
