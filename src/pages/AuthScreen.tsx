@@ -7,8 +7,6 @@ export default function AuthScreen({ onLogin }: Props) {
   const [tab] = useState<'login'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [clubName] = useState('')
-  const [slug] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -34,36 +32,7 @@ export default function AuthScreen({ onLogin }: Props) {
     setLoading(false)
   }
 
-  async function handleRegister() {
-    setLoading(true)
-    setError('')
-    if (!email || !password || !clubName || !slug) { setError('Completá todos los campos'); setLoading(false); return }
-    if (!/^[a-z0-9-]+$/.test(slug)) { setError('El slug solo puede tener letras minúsculas, números y guiones'); setLoading(false); return }
-
-    // Verificar slug único
-    const { data: existing } = await supabase.from('organizations').select('id').eq('slug', slug).single()
-    if (existing) { setError('Ese slug ya está en uso, elegí otro'); setLoading(false); return }
-
-    // Crear usuario
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) { setError(error.message); setLoading(false); return }
-
-    // Crear organización
-    const { data: org, error: orgError } = await supabase.from('organizations').insert({
-      name: clubName,
-      slug,
-      owner_id: data.user!.id,
-      plan: 'trial',
-      status: 'active',
-      tournaments_remaining: 1
-    }).select().single()
-
-    if (orgError) { setError('Error al crear la organización'); setLoading(false); return }
-    onLogin(data.user, org)
-    setLoading(false)
-  }
-
-  return (
+    return (
     <div style={styles.container}>
       <img src="/logo.png" alt="Go Fútbol" style={{ width: 160, borderRadius: 14, objectFit: 'contain', marginBottom: 24 }} />
       <div style={styles.card}>
