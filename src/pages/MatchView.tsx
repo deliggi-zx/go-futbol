@@ -194,9 +194,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setSaving(false)
   }
 
-  async function assignPlayer(playerId: string, teamId: string) {
+  async function assignPlayer(playerId: string) {
     const pending = goals
-      .filter(g => g.team_id === teamId && !g.player_id)
+      .filter(g => !g.player_id)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     if (pending.length === 0) return
     await supabase.from('goals').update({ player_id: playerId }).eq('id', pending[0].id)
@@ -523,7 +523,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               </p>
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
                 <button key={player.id} disabled={saving}
-                  onClick={() => assignPlayer(player.id, match.team_home_id)}
+                  onClick={() => assignPlayer(player.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
@@ -537,7 +537,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               </p>
               {players.filter(p => p.team_id === match.team_away_id).map(player => (
                 <button key={player.id} disabled={saving}
-                  onClick={() => assignPlayer(player.id, match.team_away_id)}
+                  onClick={() => assignPlayer(player.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
