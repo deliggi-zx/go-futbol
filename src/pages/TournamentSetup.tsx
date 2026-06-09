@@ -169,9 +169,10 @@ function downloadTemplate() {
       if (!tournament) throw new Error('INSERT torneo devolvió null')
 
       if (awards.length > 0) {
-        await supabase.from('award_types').insert(
+        const { error: awardsError } = await supabase.from('award_types').insert(
           awards.map((a, i) => ({ tournament_id: tournament.id, name: a, order_index: i }))
         )
+        if (awardsError) throw new Error('INSERT awards: ' + awardsError.message + ' code: ' + awardsError.code)
       }
 
       const activeTeams = teams.slice(0, teamCount)
