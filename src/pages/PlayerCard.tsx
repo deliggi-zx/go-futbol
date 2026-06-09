@@ -7,7 +7,6 @@ type Player = {
   handicap?: number
   position?: number
   bio?: string
-  mares?: string
   team?: { name: string; logo_url?: string | null }
 }
 
@@ -17,6 +16,23 @@ type Props = {
   onChangeVote?: (oldId: string, newId: string) => void
   voteCount: (playerId: string) => number
   votedPlayerId?: string | null
+}
+
+const TEAM_COLORS = [
+  ['#1565C0', '#0D47A1'],
+  ['#B71C1C', '#7F0000'],
+  ['#1B5E20', '#004D00'],
+  ['#4A148C', '#2D0060'],
+  ['#E65100', '#BF360C'],
+  ['#006064', '#004D51'],
+  ['#880E4F', '#560027'],
+  ['#33691E', '#1B4500'],
+]
+
+function getTeamColors(teamName: string): string[] {
+  let hash = 0
+  for (let i = 0; i < teamName.length; i++) hash = teamName.charCodeAt(i) + ((hash << 5) - hash)
+  return TEAM_COLORS[Math.abs(hash) % TEAM_COLORS.length]
 }
 
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
@@ -40,6 +56,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
   const player = players[index]
   const isVoted = votedPlayerId === player.id
   const hasVotedSomeone = !!votedPlayerId
+  const teamColors = player.team ? getTeamColors(player.team.name) : ['#0A3D1F', '#062B14']
 
   function animateAndNext(dir: 'left' | 'right', action: () => void) {
     setSwipeDir(dir)
@@ -63,21 +80,15 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
   }
 
   function handleSkip() {
-    animateAndNext('left', () => {
-      setIndex(i => (i + 1) % players.length)
-    })
+    animateAndNext('left', () => setIndex(i => (i + 1) % players.length))
   }
 
   function handleNext() {
-    animateAndNext('left', () => {
-      setIndex(i => (i + 1) % players.length)
-    })
+    animateAndNext('left', () => setIndex(i => (i + 1) % players.length))
   }
 
   function handlePrev() {
-    animateAndNext('right', () => {
-      setIndex(i => (i - 1 + players.length) % players.length)
-    })
+    animateAndNext('right', () => setIndex(i => (i - 1 + players.length) % players.length))
   }
 
   function onTouchStart(e: React.TouchEvent) {
@@ -87,19 +98,14 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
 
   function onTouchMove(e: React.TouchEvent) {
     if (!isDragging.current) return
-    const dx = e.touches[0].clientX - touchStartX.current
-    setDragX(dx)
+    setDragX(e.touches[0].clientX - touchStartX.current)
   }
 
   function onTouchEnd() {
     isDragging.current = false
-    if (dragX > 80 && !isVoted) {
-      handleVote()
-    } else if (dragX < -80) {
-      handleSkip()
-    } else {
-      setDragX(0)
-    }
+    if (dragX > 80 && !isVoted) handleVote()
+    else if (dragX < -80) handleSkip()
+    else setDragX(0)
   }
 
   const cardRotation = dragX / 15
@@ -118,7 +124,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
       {hasVotedSomeone && (
         <div style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #C9A84C', borderRadius: 20, padding: '4px 14px' }}>
           <span style={{ color: '#C9A84C', fontSize: 12, fontWeight: 600 }}>
-            &#9733; Votaste a {players.find(p => p.id === votedPlayerId)?.name ?? ''} — podés cambiar tu voto
+            ★ Votaste a {players.find(p => p.id === votedPlayerId)?.name ?? ''} — podés cambiar tu voto
           </span>
         </div>
       )}
@@ -134,132 +140,176 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
         ))}
       </div>
 
-      {/* Tarjeta */}
+      {/* Tarjeta estilo figurita */}
       <div
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: 340,
-          borderRadius: 20,
+          maxWidth: 300,
+          borderRadius: 16,
           overflow: 'hidden',
-          boxShadow: isVoted ? '0 0 24px rgba(201,168,76,0.5)' : '0 8px 32px rgba(0,0,0,0.6)',
-          border: isVoted ? '2px solid #C9A84C' : '1px solid #1A6B35',
+          boxShadow: isVoted
+            ? '0 0 0 3px #C9A84C, 0 12px 40px rgba(201,168,76,0.4)'
+            : '0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.1)',
           transform: cardTranslate,
           transition: swipeDir ? 'transform 0.3s ease-in' : dragX !== 0 ? 'none' : 'transform 0.2s ease-out',
-          background: '#1a0a10',
-          aspectRatio: '3/4',
           cursor: 'grab',
           userSelect: 'none' as const,
+          aspectRatio: '2/3',
+          background: `linear-gradient(160deg, ${teamColors[0]}, ${teamColors[1]})`,
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Foto */}
-        {player.photo_url ? (
-          <img src={player.photo_url} alt={player.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} />
-        ) : (
-          <div style={{ width: '100%', height: '100%', background: 'linear-gradient(135deg, #0D4F28, #1A6B35)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 0, left: 0 }}>
-            <span style={{ fontSize: 80, fontWeight: 900, color: '#C9A84C', opacity: 0.5 }}>{player.name.charAt(0)}</span>
-          </div>
-        )}
+        {/* Textura de papel */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 0,
+          backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.015) 2px, rgba(255,255,255,0.015) 4px)`,
+          pointerEvents: 'none',
+        }} />
 
-        {/* Badge votado */}
-        {isVoted && (
-          <div style={{ position: 'absolute', top: 12, right: 12, background: '#C9A84C', borderRadius: 20, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ color: '#0D4F28', fontSize: 13, fontWeight: 900 }}>&#9733; Tu voto</span>
+        {/* Franja superior — nombre torneo */}
+        <div style={{
+          position: 'relative', zIndex: 1,
+          background: 'rgba(0,0,0,0.5)',
+          padding: '6px 12px',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{ color: '#C9A84C', fontSize: 10, fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase' as const, fontFamily: 'Georgia, serif' }}>
+            GO FÚTBOL
+          </span>
+          {player.position !== undefined && player.position > 0 && (
+            <span style={{ color: '#fff', fontSize: 10, fontWeight: 700, background: 'rgba(201,168,76,0.3)', borderRadius: 10, padding: '1px 8px', border: '1px solid #C9A84C' }}>
+              #{player.position}
+            </span>
+          )}
+        </div>
+
+        {/* Foto del jugador */}
+        <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '52%', overflow: 'hidden' }}>
+          {player.photo_url ? (
+            <img src={player.photo_url} alt={player.name}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}>
+              <span style={{ fontSize: 72, fontWeight: 900, color: 'rgba(255,255,255,0.2)', fontFamily: 'Georgia, serif' }}>
+                {player.name.charAt(0)}
+              </span>
+            </div>
+          )}
+          {/* Gradiente sobre la foto */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: `linear-gradient(0deg, ${teamColors[1]}, transparent)` }} />
+        </div>
+
+        {/* Info del jugador */}
+        <div style={{ position: 'relative', zIndex: 1, padding: '8px 12px 12px', background: `linear-gradient(160deg, ${teamColors[0]}cc, ${teamColors[1]})` }}>
+
+          {/* Nombre */}
+          <p style={{
+            fontSize: 22, fontWeight: 900, color: '#fff', margin: '0 0 4px',
+            lineHeight: 1.1, fontFamily: 'Georgia, serif',
+            textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+            letterSpacing: 0.5,
+          }}>{player.name}</p>
+
+          {/* Equipo */}
+          {player.team && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <Avatar url={player.team.logo_url} name={player.team.name} size={18} />
+              <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' as const }}>
+                {player.team.name}
+              </span>
+            </div>
+          )}
+
+          {/* Separador dorado */}
+          <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)', marginBottom: 8 }} />
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 6 }}>
+            {voteCount(player.id) > 0 && (
+              <div style={{ background: 'rgba(201,168,76,0.25)', border: '1px solid #C9A84C', borderRadius: 20, padding: '2px 10px' }}>
+                <span style={{ color: '#C9A84C', fontSize: 11, fontWeight: 700 }}>★ {voteCount(player.id)} votos</span>
+              </div>
+            )}
+            {isVoted && (
+              <div style={{ background: '#C9A84C', borderRadius: 20, padding: '2px 10px' }}>
+                <span style={{ color: '#0D4F28', fontSize: 11, fontWeight: 900 }}>★ Tu voto</span>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Bio */}
+          {player.bio && (
+            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, margin: 0, fontStyle: 'italic', lineHeight: 1.3 }}>
+              {player.bio}
+            </p>
+          )}
+        </div>
 
         {/* Hint votar */}
         {showVoteHint && (
-          <div style={{ position: 'absolute', top: 20, left: 20, background: 'rgba(201,168,76,0.9)', borderRadius: 12, padding: '8px 16px', border: '3px solid #C9A84C', transform: 'rotate(-15deg)' }}>
-            <span style={{ color: '#0D4F28', fontWeight: 900, fontSize: 20 }}>VOTO</span>
+          <div style={{ position: 'absolute', top: 20, left: 16, zIndex: 10, background: 'rgba(201,168,76,0.95)', borderRadius: 10, padding: '6px 14px', border: '3px solid #C9A84C', transform: 'rotate(-12deg)' }}>
+            <span style={{ color: '#0D4F28', fontWeight: 900, fontSize: 18 }}>VOTO ★</span>
           </div>
         )}
 
         {/* Hint pasar */}
         {showSkipHint && (
-          <div style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(26,107,53,0.9)', borderRadius: 12, padding: '8px 16px', border: '3px solid #1A6B35', transform: 'rotate(15deg)' }}>
-            <span style={{ color: '#fff', fontWeight: 900, fontSize: 20 }}>PASO</span>
+          <div style={{ position: 'absolute', top: 20, right: 16, zIndex: 10, background: 'rgba(26,107,53,0.95)', borderRadius: 10, padding: '6px 14px', border: '3px solid #1A6B35', transform: 'rotate(12deg)' }}>
+            <span style={{ color: '#fff', fontWeight: 900, fontSize: 18 }}>PASO</span>
           </div>
         )}
 
-        {/* Info inferior */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 50%, transparent 100%)', padding: '32px 16px 16px' }}>
-          {player.team && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <Avatar url={player.team.logo_url} name={player.team.name} size={20} />
-              <span style={{ color: '#C9A84C', fontSize: 12, fontWeight: 600, letterSpacing: 1 }}>{player.team.name.toUpperCase()}</span>
-            </div>
-          )}
-          <p style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: '0 0 6px', lineHeight: 1.1 }}>{player.name}</p>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 6, flexWrap: 'wrap' as const }}>
-            {player.handicap !== undefined && player.handicap > 0 && (
-              <div style={{ background: 'rgba(201,168,76,0.2)', border: '1px solid #C9A84C', borderRadius: 20, padding: '2px 10px' }}>
-                <span style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700 }}>Hcp {player.handicap}</span>
-              </div>
-            )}
-            {player.position !== undefined && player.position > 0 && (
-              <div style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 10px' }}>
-                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>N{player.position}</span>
-              </div>
-            )}
-            {voteCount(player.id) > 0 && (
-              <div style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid #C9A84C', borderRadius: 20, padding: '2px 10px' }}>
-                <span style={{ color: '#C9A84C', fontSize: 12, fontWeight: 700 }}>{voteCount(player.id)} votos</span>
-              </div>
-            )}
-          </div>
-          {player.bio && <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 4px', fontStyle: 'italic' }}>{player.bio}</p>}
-        </div>
+        {/* Borde inferior decorativo */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, transparent, #C9A84C, transparent)', zIndex: 2 }} />
       </div>
 
       {/* Botones */}
-      <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
         <button onClick={handlePrev} style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #1A6B35',
-          color: '#1A6B35', fontSize: 20, cursor: 'pointer',
+          width: 44, height: 44, borderRadius: '50%',
+          background: 'rgba(26,107,53,0.3)', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 18, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>&larr;</button>
+        }}>←</button>
 
         <button onClick={handleSkip} style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #1A6B35',
-          color: '#a8d5b5', fontSize: 22, cursor: 'pointer',
+          width: 52, height: 52, borderRadius: '50%',
+          background: 'rgba(26,107,53,0.3)', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
-        }}>&times;</button>
+        }}>✕</button>
 
         <button onClick={handleVote} disabled={isVoted} style={{
-          width: 72, height: 72, borderRadius: '50%',
+          width: 68, height: 68, borderRadius: '50%',
           background: isVoted ? 'rgba(201,168,76,0.3)' : 'linear-gradient(135deg, #C9A84C, #a07830)',
-          border: isVoted ? '2px solid #C9A84C' : 'none',
-          fontSize: 28, cursor: isVoted ? 'default' : 'pointer',
+          border: isVoted ? '2px solid #C9A84C' : '2px solid #C9A84C',
+          fontSize: 26, cursor: isVoted ? 'default' : 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 20px rgba(201,168,76,0.5)',
-          color: '#fff',
-        }}>&#9733;</button>
+          boxShadow: isVoted ? 'none' : '0 4px 20px rgba(201,168,76,0.5)',
+          color: isVoted ? '#C9A84C' : '#fff',
+        }}>★</button>
 
         <button onClick={handleNext} style={{
-          width: 56, height: 56, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #1A6B35',
-          color: '#a8d5b5', fontSize: 22, cursor: 'pointer',
+          width: 52, height: 52, borderRadius: '50%',
+          background: 'rgba(26,107,53,0.3)', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 20, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: '0 4px 12px rgba(0,0,0,0.4)'
-        }}>&times;</button>
+        }}>→</button>
 
         <button onClick={handleNext} style={{
-          width: 48, height: 48, borderRadius: '50%',
-          background: '#1a0a10', border: '2px solid #1A6B35',
-          color: '#1A6B35', fontSize: 20, cursor: 'pointer',
+          width: 44, height: 44, borderRadius: '50%',
+          background: 'rgba(26,107,53,0.3)', border: '2px solid #1A6B35',
+          color: '#a8d5b5', fontSize: 18, cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>&rarr;</button>
+        }}>→</button>
       </div>
 
-      <p style={{ color: '#a8d5b5', fontSize: 11, margin: 0 }}>Desliza o usa los botones</p>
+      <p style={{ color: '#a8d5b5', fontSize: 11, margin: 0 }}>Deslizá o usá los botones · ★ para votar</p>
     </div>
   )
 }
