@@ -191,7 +191,7 @@ function downloadTemplate() {
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
           await supabase.from('players').insert({
             team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
-            handicap: player.handicap, position: player.position, bio: player.bio,
+            position: player.position, bio: player.bio,
           })
         }
       }
