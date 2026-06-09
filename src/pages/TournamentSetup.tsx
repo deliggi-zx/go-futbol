@@ -199,8 +199,8 @@ function downloadTemplate() {
       await generateFixture(tournament.id, activeTeams, format)
       onCreated(tournament)
     } catch (e: any) {
+      console.error('ERROR DETALLADO:', e)
       alert('Error al crear el torneo: ' + (e?.message ?? JSON.stringify(e)))
-      console.error(e)
     } finally {
       setSaving(false)
     }
