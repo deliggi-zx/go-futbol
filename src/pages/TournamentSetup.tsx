@@ -161,10 +161,12 @@ function downloadTemplate() {
     if (!name || !date) return alert('Completa nombre y fecha')
     setSaving(true)
     try {
-      const { data: tournament } = await supabase
+      const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
-        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
+        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
         .select().single()
+      if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message + ' code: ' + tournamentError.code)
+      if (!tournament) throw new Error('INSERT torneo devolvió null')
 
       if (awards.length > 0) {
         await supabase.from('award_types').insert(
