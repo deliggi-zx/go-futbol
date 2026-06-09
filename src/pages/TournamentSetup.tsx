@@ -163,7 +163,7 @@ function downloadTemplate() {
     try {
       const { data: tournament } = await supabase
         .from('tournaments')
-        .insert({ name, date, chukkers_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
+        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
         .select().single()
 
       if (awards.length > 0) {
