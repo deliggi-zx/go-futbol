@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
-// Importar Orbitron de Google Fonts
 const orbitronLink = document.createElement('link')
 orbitronLink.rel = 'stylesheet'
 orbitronLink.href = 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap'
@@ -15,24 +14,6 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; s
     <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #0D4F28 0%, #062B14 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }}>
       {name.charAt(0).toUpperCase()}
     </div>
-  )
-}
-
-function DigitalDigit({ value, overtime = false }: { value: string; overtime?: boolean }) {
-  const color = overtime ? '#ef4444' : '#00ff88'
-  const glow = overtime ? 'rgba(239,68,68,0.8)' : 'rgba(0,255,136,0.8)'
-  return (
-    <span style={{
-      fontFamily: "'Orbitron', monospace",
-      fontSize: 52,
-      fontWeight: 900,
-      color,
-      textShadow: `0 0 10px ${glow}, 0 0 20px ${glow}, 0 0 40px ${glow}`,
-      letterSpacing: 2,
-      lineHeight: 1,
-    }}>
-      {value}
-    </span>
   )
 }
 
@@ -52,7 +33,7 @@ function DigitalScore({ score, onTap, isAdmin, pendingCount = 0, overtime = fals
 
   const display = displayScore.toString().padStart(2, '0')
   const color = overtime ? '#ef4444' : '#00ff88'
-  const glow = overtime ? 'rgba(239,68,68,0.8)' : 'rgba(0,255,136,0.8)'
+  const glow = overtime ? 'rgba(239,68,68,0.9)' : 'rgba(0,255,136,0.9)'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
@@ -60,20 +41,20 @@ function DigitalScore({ score, onTap, isAdmin, pendingCount = 0, overtime = fals
         onClick={isAdmin && onTap ? onTap : undefined}
         style={{
           cursor: isAdmin && onTap ? 'pointer' : 'default',
-          opacity: flash ? 0.3 : 1,
+          opacity: flash ? 0.2 : 1,
           transition: 'opacity 0.15s',
           fontFamily: "'Orbitron', monospace",
-          fontSize: 64,
+          fontSize: 72,
           fontWeight: 900,
           color,
-          textShadow: `0 0 10px ${glow}, 0 0 20px ${glow}, 0 0 40px ${glow}`,
-          letterSpacing: 4,
+          textShadow: `0 0 8px ${glow}, 0 0 20px ${glow}, 0 0 50px ${glow}`,
+          letterSpacing: 6,
           lineHeight: 1,
-          padding: '4px 8px',
-          borderRadius: 8,
-          background: 'rgba(0,0,0,0.4)',
-          border: `1px solid ${color}33`,
-          minWidth: 100,
+          padding: '8px 12px',
+          borderRadius: 12,
+          background: 'rgba(0,0,0,0.5)',
+          border: `2px solid ${color}44`,
+          minWidth: 110,
           textAlign: 'center' as const,
         }}
       >
@@ -99,7 +80,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showQR, setShowQR] = useState(false)
-  const [canchMode, setCanchMode] = useState(false)
   const [soundOn, setSoundOn] = useState(true)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const soundOnRef = useRef(true)
@@ -313,8 +293,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const gold = '#C9A84C'
   const goldLight = '#E8C96A'
   const darkBg = '#062B14'
-
-  const grassBg = `url('/grass.jpg')`
+  const clockColor = clockIsOvertime ? '#ef4444' : '#00ff88'
+  const clockGlow = clockIsOvertime ? 'rgba(239,68,68,0.9)' : 'rgba(0,255,136,0.9)'
 
   const periodLabel = clock
     ? clock.chukker === 1 ? '1° TIEMPO'
@@ -322,7 +302,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     : clock.chukker === 3 ? '1° TIEMPO EXTRA'
     : clock.chukker === 4 ? '2° TIEMPO EXTRA'
     : `TIEMPO ${clock.chukker}`
-    : '—'
+    : ''
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0A3D1F', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -333,10 +313,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const qrUrl = `${window.location.origin}/?match=${match.id}`
 
   return (
-    <div style={{ minHeight: '100vh', background: canchMode ? '#001a0a' : '#0A3D1F', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
+    <div style={{
+      minHeight: '100vh',
+      background: `url('/grass.jpg') center center / cover fixed`,
+      color: '#fff',
+    }}>
 
       {/* Header */}
-      <div style={{ background: 'rgba(6,43,20,0.97)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
+      <div style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 14, marginBottom: 8, padding: 0, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
           ← Volver al fixture
         </button>
@@ -348,13 +332,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
-            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: darkBg, border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+            <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
             </button>
-            <button onClick={() => setCanchMode(!canchMode)} style={{ background: canchMode ? '#FFE000' : darkBg, border: `1px solid ${canchMode ? '#FFE000' : gold + '66'}`, borderRadius: 8, padding: '4px 10px', color: canchMode ? '#000' : gold, cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-              {canchMode ? 'Normal' : 'Cancha'}
-            </button>
-            <button onClick={() => setShowQR(!showQR)} style={{ background: darkBg, border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
+            <button onClick={() => setShowQR(!showQR)} style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 12 }}>
               QR
             </button>
           </div>
@@ -363,7 +344,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
       {/* QR */}
       {showQR && (
-        <div style={{ background: '#1e293b', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, borderBottom: '1px solid #334155' }}>
+        <div style={{ background: 'rgba(0,0,0,0.85)', padding: 20, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, borderBottom: '1px solid #334155' }}>
           <p style={{ color: '#94a3b8', fontSize: 13, margin: 0 }}>Escanea para votar al jugador destacado</p>
           <div style={{ background: '#fff', padding: 12, borderRadius: 12 }}>
             <QRCodeSVG value={qrUrl} size={180} />
@@ -372,119 +353,167 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         </div>
       )}
 
-      {/* Marcador */}
-      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #3a6b20, 0 8px 32px rgba(0,0,0,0.9)`, position: 'relative' as const }}>
-        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #3a6b20, ${gold}, #3a6b20, ${darkBg})`, height: 4 }} />
-        <div style={{ background: grassBg, backgroundSize: 'cover', backgroundPosition: 'center', padding: '16px 16px 24px', position: 'relative' as const }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
+      {/* TABLERO PRINCIPAL */}
+      <div style={{ margin: '24px 16px 0', position: 'relative' as const }}>
 
-            {/* Cronómetro */}
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              {clock ? (
-                <>
-                  <div style={{ fontSize: 10, color: clockIsOvertime ? '#ef4444' : `${gold}cc`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 6, textTransform: 'uppercase' as const }}>
-                    {periodLabel}{clockIsOvertime ? ' — TIEMPO ADICIONAL' : ''}
-                  </div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.7)', borderRadius: 10, padding: '8px 16px', border: `1px solid ${clockIsOvertime ? '#ef444466' : '#00ff8844'}` }}>
-                    {getDisplayTime().split('').map((char, i) => (
-                      <DigitalDigit key={i} value={char} overtime={clockIsOvertime} />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 10, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 6, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
-                    {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ TIEMPO FINALIZADO'}
-                  </div>
-                </>
-              ) : (
-                <div style={{ fontSize: 11, color: `${gold}55`, fontFamily: 'Georgia, serif', letterSpacing: 2, padding: '4px 0' }}>
-                  — LISTO PARA INICIAR —
-                </div>
-              )}
+        {/* Reloj — flota encima rompiendo el borde del tablero */}
+        <div style={{
+          position: 'absolute' as const,
+          top: -28,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10,
+          background: clockIsOvertime
+            ? 'linear-gradient(135deg, #3a0000, #600000)'
+            : 'linear-gradient(135deg, #001a0a, #003318)',
+          border: `2px solid ${clockColor}`,
+          borderRadius: 16,
+          padding: '8px 24px',
+          boxShadow: `0 0 20px ${clockGlow}, 0 0 40px ${clockGlow}33`,
+          backdropFilter: 'blur(4px)',
+          minWidth: 200,
+          textAlign: 'center' as const,
+        }}>
+          {periodLabel && (
+            <div style={{ fontSize: 9, color: clockIsOvertime ? '#ef444488' : `${gold}99`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 2, textTransform: 'uppercase' as const }}>
+              {periodLabel}{clockIsOvertime ? ' +' : ''}
+            </div>
+          )}
+          <div style={{
+            fontFamily: "'Orbitron', monospace",
+            fontSize: 42,
+            fontWeight: 900,
+            color: clockColor,
+            textShadow: `0 0 8px ${clockGlow}, 0 0 20px ${clockGlow}`,
+            letterSpacing: 4,
+            lineHeight: 1,
+          }}>
+            {getDisplayTime()}
+          </div>
+          {clock && (
+            <div style={{ fontSize: 9, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 3, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
+              {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ FINALIZADO'}
+            </div>
+          )}
+        </div>
+
+        {/* Tablero — vidrio oscuro */}
+        <div style={{
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: 20,
+          border: `1px solid ${gold}44`,
+          boxShadow: `0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)`,
+          padding: '48px 20px 24px',
+          position: 'relative' as const,
+          overflow: 'visible' as const,
+        }}>
+
+          {/* Equipos y scores */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+
+            {/* Equipo local */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={60} />
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{match.team_home?.name}</p>
+              <DigitalScore
+                score={homeGoals}
+                overtime={clockIsOvertime}
+                isAdmin={isAdmin && match.status !== 'finished'}
+                onTap={() => addGoalNoPlayer(match.team_home_id)}
+                pendingCount={homePending}
+              />
             </div>
 
-            {/* Botones cronómetro */}
-            {isAdmin && match.status !== 'finished' && (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
-                {!clock && (
-                  <button onClick={() => startClock(1)}
-                    style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                    Iniciar 1° Tiempo
+            {/* Separador central */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, paddingTop: 40 }}>
+              <span style={{
+                fontFamily: "'Orbitron', monospace",
+                fontSize: 56, fontWeight: 900,
+                color: clockIsOvertime ? '#ef4444' : '#00ff88',
+                textShadow: `0 0 10px ${clockGlow}`,
+                lineHeight: 1,
+                opacity: 0.8,
+              }}>:</span>
+            </div>
+
+            {/* Equipo visitante */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={60} />
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{match.team_away?.name}</p>
+              <DigitalScore
+                score={awayGoals}
+                overtime={clockIsOvertime}
+                isAdmin={isAdmin && match.status !== 'finished'}
+                onTap={() => addGoalNoPlayer(match.team_away_id)}
+                pendingCount={awayPending}
+              />
+            </div>
+          </div>
+
+          {/* Borde dorado inferior */}
+          <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${gold}88, transparent)`, marginTop: 20 }} />
+
+          {/* Botones cronómetro */}
+          {isAdmin && match.status !== 'finished' && (
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' as const }}>
+              {!clock && (
+                <button onClick={() => startClock(1)}
+                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                  Iniciar 1° Tiempo
+                </button>
+              )}
+              {clock?.status === 'running' && (
+                clockIsOvertime ? (
+                  <button onClick={stopClock}
+                    style={{ background: 'linear-gradient(135deg, #3a0000, #600000)', border: '1px solid #ef444466', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    Finalizar Tiempo
                   </button>
-                )}
-                {clock?.status === 'running' && (
-                  clockIsOvertime ? (
-                    <button onClick={stopClock}
-                      style={{ background: 'linear-gradient(135deg, #3a0000, #600000)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                      Finalizar Tiempo
-                    </button>
-                  ) : (
-                    <>
-                      <button onClick={pauseClock}
-                        style={{ background: 'linear-gradient(135deg, #1a1400, #2a2000)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                        Pausar
-                      </button>
-                      <button onClick={stopClock}
-                        style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                        Finalizar Tiempo
-                      </button>
-                    </>
-                  )
-                )}
-                {clock?.status === 'paused' && (
+                ) : (
                   <>
-                    <button onClick={resumeClock}
-                      style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                      Reanudar
+                    <button onClick={pauseClock}
+                      style={{ background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      Pausar
                     </button>
                     <button onClick={stopClock}
-                      style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', color: `${gold}77`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif' }}>
                       Finalizar Tiempo
                     </button>
                   </>
-                )}
-                {clock?.status === 'stopped' && clock.chukker < totalPeriods && (
-                  <button onClick={() => startClock(clock.chukker + 1)}
-                    style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                    Iniciar {clock.chukker + 1 === 2 ? '2° Tiempo' : `Tiempo ${clock.chukker + 1}`}
+                )
+              )}
+              {clock?.status === 'paused' && (
+                <>
+                  <button onClick={resumeClock}
+                    style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    Reanudar
                   </button>
-                )}
-              </div>
-            )}
-
-            <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${gold}55, transparent)`, marginBottom: 16 }} />
-
-            {/* Equipos y marcador */}
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>{match.team_home?.name}</p>
-                <DigitalScore score={homeGoals} overtime={clockIsOvertime} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_home_id)} pendingCount={homePending} />
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 40, flexShrink: 0 }}>
-                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 48, fontWeight: 900, color: clockIsOvertime ? '#ef4444' : '#00ff88', textShadow: clockIsOvertime ? '0 0 10px rgba(239,68,68,0.8)' : '0 0 10px rgba(0,255,136,0.8)', lineHeight: 1 }}>:</span>
-              </div>
-
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>{match.team_away?.name}</p>
-                <DigitalScore score={awayGoals} overtime={clockIsOvertime} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_away_id)} pendingCount={awayPending} />
-              </div>
+                  <button onClick={stopClock}
+                    style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '10px 16px', cursor: 'pointer', color: `${gold}77`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif' }}>
+                    Finalizar Tiempo
+                  </button>
+                </>
+              )}
+              {clock?.status === 'stopped' && clock.chukker < totalPeriods && (
+                <button onClick={() => startClock(clock.chukker + 1)}
+                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                  Iniciar {clock.chukker + 1 === 2 ? '2° Tiempo' : `Tiempo ${clock.chukker + 1}`}
+                </button>
+              )}
             </div>
-          </div>
+          )}
         </div>
-        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #3a6b20, ${gold}, #3a6b20, ${darkBg})`, height: 4 }} />
       </div>
 
       {/* Panel asignación */}
       {isAdmin && match.status !== 'finished' && (
-        <div style={{ padding: '0 16px 16px' }}>
-          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
+        <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
             <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Tiempo:</span>
-            <input style={{ background: darkBg, border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+            <input style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
               type="number" min={1} max={tournament.periods_per_match} value={period} onChange={e => setPeriod(Number(e.target.value))} />
           </div>
 
@@ -496,7 +525,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_home_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_home_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'linear-gradient(135deg, #1a1a00 0%, #2a2800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -510,7 +539,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               {players.filter(p => p.team_id === match.team_away_id).map(player => (
                 <button key={player.id} disabled={saving}
                   onClick={() => assignPlayer(player.id, match.team_away_id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'linear-gradient(135deg, #1a1a00 0%, #2a2800 100%)' : 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '88'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
                   <Avatar url={player.photo_url} name={player.name} size={32} />
                   <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
                 </button>
@@ -521,12 +550,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
             {goals.length > 0 && (
               <button onClick={removeLastGoal}
-                style={{ flex: 1, background: 'linear-gradient(135deg, #062B14, #0a3d1f)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                style={{ flex: 1, background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 Deshacer
               </button>
             )}
             <button onClick={finishMatch}
-              style={{ flex: 1, background: 'linear-gradient(135deg, #0d3320, #166534)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
               Finalizar partido
             </button>
           </div>
@@ -535,9 +564,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
       {/* Historial de goles */}
       {goals.length > 0 && (
-        <div style={{ padding: '0 16px 16px' }}>
+        <div style={{ margin: '0 16px 16px' }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>GOLES</p>
-          <div style={{ background: 'rgba(6,43,20,0.8)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
+          <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
             {goals.map((g, i) => (
               <div key={g.id}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
@@ -556,13 +585,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                   </div>
                 </div>
                 {editingGoalId === g.id && isAdmin && (
-                  <div style={{ background: '#061a0e', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                  <div style={{ background: 'rgba(0,0,0,0.6)', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
                     <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
                       {players.filter(p => p.team_id === g.team_id).map(player => (
                         <button key={player.id}
                           onClick={() => reassignGoal(g.id, player.id)}
-                          style={{ background: g.player_id === player.id ? gold : darkBg, border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
+                          style={{ background: g.player_id === player.id ? gold : 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
                           {player.name}
                         </button>
                       ))}
@@ -576,10 +605,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       )}
 
       {/* MVP */}
-      <div style={{ padding: '0 16px 32px' }}>
+      <div style={{ margin: '0 16px 32px' }}>
         <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>JUGADOR DESTACADO</p>
         {mvpOfficial ? (
-          <div style={{ background: 'rgba(6,43,20,0.9)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
+          <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, padding: 20, textAlign: 'center' as const, border: `1px solid ${gold}`, boxShadow: `0 0 20px rgba(201,168,76,0.2)` }}>
             <p style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 4 }}>Destacado oficial</p>
             <p style={{ fontSize: 20, fontWeight: 800, color: gold, fontFamily: 'Georgia, serif' }}>⭐ {mvpOfficial.player?.name}</p>
           </div>
@@ -603,7 +632,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
                 {players.map(player => (
                   <button key={player.id}
                     onClick={() => setOfficialMvp(player.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'linear-gradient(135deg, #061a0e 0%, #0a2e18 100%)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
                     <Avatar url={player.photo_url} name={player.name} size={32} />
                     <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
                     <span style={{ color: gold, fontSize: 12 }}>{getMvpVoteCount(player.id)} votos</span>
