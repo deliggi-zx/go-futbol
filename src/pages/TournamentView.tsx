@@ -220,9 +220,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const styles = {
     container: {
       minHeight: '100vh',
-      background: '#0A3D1F',
+      background: `url('/grass.jpg') center center / cover fixed`,
       color: '#fff',
-      backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.02) 40px, rgba(201,168,76,0.02) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.02) 40px, rgba(201,168,76,0.02) 41px)`,
     },
     input: { width: '100%', background: darkBg, border: borderGold, borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const, fontFamily: 'Georgia, serif' },
     adminBtn: { background: 'linear-gradient(135deg, #0D4F28, #062B14)', color: gold, border: `1px solid ${gold}66`, borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontSize: 13, fontFamily: 'Georgia, serif', fontWeight: 700 },
