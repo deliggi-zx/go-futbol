@@ -314,13 +314,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const goldLight = '#E8C96A'
   const darkBg = '#062B14'
 
-  const grassBg = `
-    radial-gradient(ellipse at 20% 50%, rgba(0,60,0,0.8) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(0,80,0,0.6) 0%, transparent 40%),
-    repeating-linear-gradient(90deg, rgba(0,100,0,0.15) 0px, rgba(0,100,0,0.15) 40px, rgba(0,80,0,0.25) 40px, rgba(0,80,0,0.25) 80px),
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 8px),
-    linear-gradient(160deg, #1a4a10 0%, #0d3308 40%, #0a2a06 60%, #0d3308 100%)
-  `
+  const grassBg = `url('/grass.jpg')`
 
   const periodLabel = clock
     ? clock.chukker === 1 ? '1° TIEMPO'
@@ -381,7 +375,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       {/* Marcador */}
       <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #3a6b20, 0 8px 32px rgba(0,0,0,0.9)`, position: 'relative' as const }}>
         <div style={{ background: `linear-gradient(90deg, ${darkBg}, #3a6b20, ${gold}, #3a6b20, ${darkBg})`, height: 4 }} />
-        <div style={{ background: grassBg, padding: '16px 16px 24px', position: 'relative' as const }}>
+        <div style={{ background: grassBg, backgroundSize: 'cover', backgroundPosition: 'center', padding: '16px 16px 24px', position: 'relative' as const }}>
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
 
