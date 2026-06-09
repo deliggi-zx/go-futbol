@@ -314,7 +314,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   return (
     <div style={{
       minHeight: '100vh',
-      background: `url('/grass.jpg') center center / cover fixed`,
+      background: `url('/grass.jpg') center center / cover`,
       color: '#fff',
     }}>
 
