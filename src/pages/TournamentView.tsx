@@ -108,7 +108,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     })
 
     const channel = supabase
-      .channel('tournament-changes')
+      .channel(`tournament-changes-${tournament.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => loadData())
       .subscribe()

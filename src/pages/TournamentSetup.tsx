@@ -42,7 +42,7 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   const [newAward, setNewAward] = useState('')
   const [saving, setSaving] = useState(false)
   const [scorerPassword, setScorerPassword] = useState('')
-  const [chukkerDuration, setChukkerDuration] = useState(8)
+  const [chukkerDuration, setChukkerDuration] = useState(45)
   const [step, setStep] = useState<'config' | 'teams' | 'awards'>('config')
 
   const { groupNames } = getGroupsConfig(teamCount, format)
@@ -318,7 +318,7 @@ function downloadTemplate() {
           <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Estándar: 7.5 min. Para demos o categorías juveniles podés reducirlo.</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Contraseña para cargadores de goles</label>
-          <input style={styles.input} value={scorerPassword} onChange={e => setScorerPassword(e.target.value)} placeholder="Ej: polo2026" />
+          <input style={styles.input} value={scorerPassword} onChange={e => setScorerPassword(e.target.value)} placeholder="Ej: futbol2026" />
           <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Compartila con quienes van a cargar goles el día del torneo</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Cantidad de equipos</label>
@@ -409,7 +409,7 @@ function downloadTemplate() {
               </div>
               <label style={{ ...styles.label, fontSize: 11 }}>Logo del equipo (opcional)</label>
               <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 12, marginBottom: 8 }} onChange={e => updateTeam(i, 'logo', e.target.files?.[0] ?? null)} />
-              <input style={styles.input} type="number" placeholder="Handicap del equipo" value={team.handicap} onChange={e => updateTeam(i, 'handicap', Number(e.target.value))} />
+              {/* handicap del equipo eliminado */}
 
               <p style={{ color: '#a8d5b5', fontSize: 12, marginTop: 12, marginBottom: 8 }}>Jugadores:</p>
               {team.players.map((player, j) => (
@@ -421,7 +421,7 @@ function downloadTemplate() {
                       <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Hcp" min={0} max={10} value={player.handicap} onChange={e => updatePlayer(i, j, 'handicap', Number(e.target.value))} />
                       <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Pos" min={1} max={4} value={player.position} onChange={e => updatePlayer(i, j, 'position', Number(e.target.value))} />
                     </div>
-                    <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Resena breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
+                    <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Reseña breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
                     <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
                   </div>
                 </div>
