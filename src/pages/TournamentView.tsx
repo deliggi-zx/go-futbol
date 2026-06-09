@@ -48,12 +48,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     else alert('Contraseña incorrecta')
   }
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAdmin(!!session)
-    })
-  }, [])
-
+  
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { setIsAdmin(false); return }
@@ -132,11 +127,15 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
 
   async function loadData() {
     setLoading(true)
-    const [m, t, g, p] = await Promise.all([
+    const [m, t] = await Promise.all([
       supabase.from('matches').select('*, team_home:teams!matches_team_home_id_fkey(*), team_away:teams!matches_team_away_id_fkey(*)').eq('tournament_id', tournament.id).order('created_at'),
       supabase.from('teams').select('*').eq('tournament_id', tournament.id),
-      supabase.from('goals').select('*, player:players(*), team:teams(*)').in('match_id', (await supabase.from('matches').select('id').eq('tournament_id', tournament.id)).data?.map((m: any) => m.id) ?? []),
-      supabase.from('players').select('*, team:teams(*)').in('team_id', (await supabase.from('teams').select('id').eq('tournament_id', tournament.id)).data?.map((t: any) => t.id) ?? []),
+    ])
+    const matchIds = (m.data ?? []).map((x: any) => x.id)
+    const teamIds = (t.data ?? []).map((x: any) => x.id)
+    const [g, p] = await Promise.all([
+      matchIds.length > 0 ? supabase.from('goals').select('*, player:players(*), team:teams(*)').in('match_id', matchIds) : Promise.resolve({ data: [] }),
+      teamIds.length > 0 ? supabase.from('players').select('*, team:teams(*)').in('team_id', teamIds) : Promise.resolve({ data: [] }),
     ])
     setMatches(m.data ?? [])
     setTeams(t.data ?? [])
