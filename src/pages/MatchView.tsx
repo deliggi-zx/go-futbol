@@ -3,6 +3,12 @@ import { supabase } from '../lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
+// Importar Orbitron de Google Fonts
+const orbitronLink = document.createElement('link')
+orbitronLink.rel = 'stylesheet'
+orbitronLink.href = 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap'
+document.head.appendChild(orbitronLink)
+
 function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
   if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }} />
   return (
@@ -12,72 +18,66 @@ function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; s
   )
 }
 
-function FlapDigit({ value, flipping, highlight = false }: { value: number; flipping: boolean; highlight?: boolean }) {
+function DigitalDigit({ value, overtime = false }: { value: string; overtime?: boolean }) {
+  const color = overtime ? '#ef4444' : '#00ff88'
+  const glow = overtime ? 'rgba(239,68,68,0.8)' : 'rgba(0,255,136,0.8)'
   return (
-    <div style={{
-      width: 52, height: 72,
-      background: highlight ? '#000' : 'linear-gradient(180deg, #f5e6c8 0%, #e8d4a0 45%, #d4b870 50%, #e8d4a0 100%)',
-      borderRadius: 10,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: 'Georgia, serif',
-      fontSize: highlight ? 48 : 46,
+    <span style={{
+      fontFamily: "'Orbitron', monospace",
+      fontSize: 52,
       fontWeight: 900,
-      color: highlight ? '#FFE000' : '#0A3D1F',
-      position: 'relative' as const,
-      overflow: 'hidden' as const,
-      boxShadow: highlight
-        ? '0 0 20px rgba(255,224,0,0.5), inset 0 2px 4px rgba(255,255,255,0.1)'
-        : 'inset 0 2px 6px rgba(255,255,255,0.4), inset 0 -2px 6px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.6)',
-      border: highlight ? '2px solid #FFE000' : '2px solid #B8960C',
-      transform: flipping ? 'scaleY(0.1)' : 'scaleY(1)',
-      transition: flipping ? 'transform 0.08s ease-in' : 'transform 0.08s ease-out',
+      color,
+      textShadow: `0 0 10px ${glow}, 0 0 20px ${glow}, 0 0 40px ${glow}`,
+      letterSpacing: 2,
+      lineHeight: 1,
     }}>
-      <div style={{
-        position: 'absolute' as const, top: 0, left: 0, right: 0, height: '50%',
-        background: highlight
-          ? 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.1) 100%)'
-          : 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 100%)',
-        borderBottom: highlight ? '2px solid #333' : '2px solid #8B6914',
-        borderRadius: '10px 10px 0 0',
-      }} />
-      <div style={{
-        position: 'absolute' as const, left: 6, right: 6, top: 'calc(50% - 1px)', height: 2,
-        background: highlight ? '#333' : '#8B6914',
-      }} />
       {value}
-    </div>
+    </span>
   )
 }
 
-function FlapScore({ score, highlight = false, onTap, isAdmin, pendingCount = 0 }:
-  { score: number; highlight?: boolean; onTap?: () => void; isAdmin?: boolean; pendingCount?: number }) {
+function DigitalScore({ score, onTap, isAdmin, pendingCount = 0, overtime = false }:
+  { score: number; onTap?: () => void; isAdmin?: boolean; pendingCount?: number; overtime?: boolean }) {
   const [displayScore, setDisplayScore] = useState(score)
-  const [flipping, setFlipping] = useState(false)
+  const [flash, setFlash] = useState(false)
   const prevScore = useRef(score)
 
   useEffect(() => {
     if (score !== prevScore.current) {
-      setFlipping(true)
-      setTimeout(() => { setDisplayScore(score); setFlipping(false) }, 100)
+      setFlash(true)
+      setTimeout(() => { setDisplayScore(score); setFlash(false) }, 150)
       prevScore.current = score
     }
   }, [score])
 
-  const tens = Math.floor(displayScore / 10)
-  const units = displayScore % 10
+  const display = displayScore.toString().padStart(2, '0')
+  const color = overtime ? '#ef4444' : '#00ff88'
+  const glow = overtime ? 'rgba(239,68,68,0.8)' : 'rgba(0,255,136,0.8)'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 6 }}>
       <div
         onClick={isAdmin && onTap ? onTap : undefined}
         style={{
-          display: 'flex', gap: 6,
           cursor: isAdmin && onTap ? 'pointer' : 'default',
-          transition: 'transform 0.1s',
+          opacity: flash ? 0.3 : 1,
+          transition: 'opacity 0.15s',
+          fontFamily: "'Orbitron', monospace",
+          fontSize: 64,
+          fontWeight: 900,
+          color,
+          textShadow: `0 0 10px ${glow}, 0 0 20px ${glow}, 0 0 40px ${glow}`,
+          letterSpacing: 4,
+          lineHeight: 1,
+          padding: '4px 8px',
+          borderRadius: 8,
+          background: 'rgba(0,0,0,0.4)',
+          border: `1px solid ${color}33`,
+          minWidth: 100,
+          textAlign: 'center' as const,
         }}
       >
-        <FlapDigit value={tens} flipping={flipping} highlight={highlight} />
-        <FlapDigit value={units} flipping={flipping} highlight={highlight} />
+        {display}
       </div>
       {isAdmin && onTap && (
         <div style={{ fontSize: 10, color: pendingCount > 0 ? '#fb923c' : '#C9A84C', fontWeight: 700, letterSpacing: 1, fontFamily: 'Georgia, serif' }}>
@@ -95,7 +95,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [players, setPlayers] = useState<any[]>([])
   const [mvpVotes, setMvpVotes] = useState<any[]>([])
   const [mvpOfficial, setMvpOfficial] = useState<any>(null)
-  const [chukker, setChukker] = useState(match.chukker_current ?? 1)
+  const [period, setPeriod] = useState(match.chukker_current ?? 1)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showQR, setShowQR] = useState(false)
@@ -108,9 +108,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const clockRef = useRef<any | null>(null)
   const [liveElapsed, setLiveElapsed] = useState(0)
   const bellFiredRef = useRef(false)
-  const prevClockChukkerRef = useRef<number | null>(null)
 
-  const chukkerSeconds = (tournament.chukker_duration_minutes ?? 8) * 60
+  const periodSeconds = (tournament.chukker_duration_minutes ?? 45) * 60
+  const totalPeriods = tournament.periods_per_match ?? 2
+
+  function getBaseSeconds(periodNum: number): number {
+    return (periodNum - 1) * periodSeconds
+  }
 
   const deviceId = (() => {
     let id = localStorage.getItem('gofutbol_device_id')
@@ -128,6 +132,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (error) return
     clockRef.current = data
     setClock(data)
+    if (data) setPeriod(data.chukker)
   }
 
   useEffect(() => {
@@ -161,26 +166,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   useEffect(() => {
-    if (!clock) return
-    if (clock.chukker !== prevClockChukkerRef.current) {
-      prevClockChukkerRef.current = clock.chukker
-      setChukker(clock.chukker)
-      const initialElapsed = clock.status === 'running'
-        ? clock.elapsed_seconds + (Date.now() / 1000 - new Date(clock.started_at).getTime() / 1000)
-        : clock.elapsed_seconds
-      bellFiredRef.current = initialElapsed >= (chukkerSeconds - 30)
-    }
-  }, [clock?.chukker])
-
-  useEffect(() => {
     if (clock?.status !== 'running') return
     const tick = () => {
       const now = Date.now() / 1000
       const startedAt = new Date(clock.started_at).getTime() / 1000
       const elapsed = clock.elapsed_seconds + (now - startedAt)
       setLiveElapsed(elapsed)
-      const remaining = chukkerSeconds - elapsed
-      if (remaining <= 30 && remaining > 0 && !bellFiredRef.current) {
+      const periodLimit = getBaseSeconds(clock.chukker) + periodSeconds
+      if (elapsed >= periodLimit && !bellFiredRef.current) {
         bellFiredRef.current = true
         ringBell()
       }
@@ -191,14 +184,19 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }, [clock])
 
   const clockElapsed = clock?.status === 'running' ? liveElapsed : (clock?.elapsed_seconds ?? 0)
-  const clockRemaining = chukkerSeconds - clockElapsed
-  const clockIsOvertime = clockRemaining < 0
+  const currentPeriodLimit = clock ? getBaseSeconds(clock.chukker) + periodSeconds : periodSeconds
+  const clockIsOvertime = clockElapsed >= currentPeriodLimit
 
-  function formatClockTime(seconds: number): string {
-    const abs = Math.abs(seconds)
-    const m = Math.floor(abs / 60)
-    const s = Math.floor(abs % 60)
-    return `${m}:${s.toString().padStart(2, '0')}`
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60)
+    const s = Math.floor(seconds % 60)
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  function getDisplayTime(): string {
+    if (!clock) return '00:00'
+    if (clock.status === 'stopped') return formatTime(clock.elapsed_seconds)
+    return formatTime(clockElapsed)
   }
 
   const homeGoals = goals.filter(g => g.team_id === match.team_home_id).length
@@ -210,8 +208,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function addGoalNoPlayer(teamId: string) {
     if (saving) return
     setSaving(true)
-    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker })
-    await supabase.from('matches').update({ status: 'live', chukker_current: chukker }).eq('id', match.id)
+    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker: period })
+    await supabase.from('matches').update({ status: 'live', chukker_current: period }).eq('id', match.id)
     await loadData()
     setSaving(false)
   }
@@ -257,26 +255,24 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     await loadData()
   }
 
-  async function startClock(chukkerNum: number) {
+  async function startClock(periodNum: number) {
     const now = new Date().toISOString()
     bellFiredRef.current = false
+    const baseSeconds = getBaseSeconds(periodNum)
     if (clock) {
       const { data, error } = await supabase.from('match_clock')
-        .update({ chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
-        .eq('match_id', match.id)
-        .select()
-        .single()
+        .update({ chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now })
+        .eq('match_id', match.id).select().single()
       if (error) { alert(`Error: ${error.message}`); return }
-      clockRef.current = data; setClock(data)
+      clockRef.current = data; setClock(data); setPeriod(periodNum)
     } else {
       const { data, error } = await supabase.from('match_clock')
-        .insert({ match_id: match.id, chukker: chukkerNum, status: 'running', started_at: now, elapsed_seconds: 0, updated_at: now })
-        .select()
-        .single()
+        .insert({ match_id: match.id, chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now })
+        .select().single()
       if (error) { alert(`Error: ${error.message}`); return }
-      clockRef.current = data; setClock(data)
+      clockRef.current = data; setClock(data); setPeriod(periodNum)
     }
-    await supabase.from('matches').update({ status: 'live', chukker_current: chukkerNum }).eq('id', match.id)
+    await supabase.from('matches').update({ status: 'live', chukker_current: periodNum }).eq('id', match.id)
   }
 
   async function pauseClock() {
@@ -286,9 +282,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     const currentElapsed = Math.floor(clock.elapsed_seconds + (now - startedAt))
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'paused', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
-      .eq('match_id', match.id)
-      .select()
-      .single()
+      .eq('match_id', match.id).select().single()
     if (error) { alert(`Error al pausar: ${error.message}`); return }
     clockRef.current = data; setClock(data)
   }
@@ -297,9 +291,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (!clock) return
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'running', started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('match_id', match.id)
-      .select()
-      .single()
+      .eq('match_id', match.id).select().single()
     if (error) return
     clockRef.current = data; setClock(data)
   }
@@ -309,9 +301,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     const currentElapsed = Math.floor(clock.status === 'running' ? liveElapsed : clock.elapsed_seconds)
     const { data, error } = await supabase.from('match_clock')
       .update({ status: 'stopped', elapsed_seconds: currentElapsed, started_at: null, updated_at: new Date().toISOString() })
-      .eq('match_id', match.id)
-      .select()
-      .single()
+      .eq('match_id', match.id).select().single()
     if (error) { alert(`Error al finalizar tiempo: ${error.message}`); return }
     clockRef.current = data; setClock(data)
   }
@@ -324,6 +314,22 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const goldLight = '#E8C96A'
   const darkBg = '#062B14'
 
+  const grassBg = `
+    radial-gradient(ellipse at 20% 50%, rgba(0,60,0,0.8) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0,80,0,0.6) 0%, transparent 40%),
+    repeating-linear-gradient(90deg, rgba(0,100,0,0.15) 0px, rgba(0,100,0,0.15) 40px, rgba(0,80,0,0.25) 40px, rgba(0,80,0,0.25) 80px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 8px),
+    linear-gradient(160deg, #1a4a10 0%, #0d3308 40%, #0a2a06 60%, #0d3308 100%)
+  `
+
+  const periodLabel = clock
+    ? clock.chukker === 1 ? '1° TIEMPO'
+    : clock.chukker === 2 ? '2° TIEMPO'
+    : clock.chukker === 3 ? '1° TIEMPO EXTRA'
+    : clock.chukker === 4 ? '2° TIEMPO EXTRA'
+    : `TIEMPO ${clock.chukker}`
+    : '—'
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0A3D1F', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       <p style={{ color: gold, fontSize: 16, fontFamily: 'Georgia, serif' }}>Cargando...</p>
@@ -331,7 +337,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   )
 
   const qrUrl = `${window.location.origin}/?match=${match.id}`
-  const stoppedRemaining = clock ? chukkerSeconds - clock.elapsed_seconds : 0
 
   return (
     <div style={{ minHeight: '100vh', background: canchMode ? '#001a0a' : '#0A3D1F', color: '#fff', backgroundImage: canchMode ? 'none' : `repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px), repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(201,168,76,0.03) 40px, rgba(201,168,76,0.03) 41px)` }}>
@@ -374,122 +379,110 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       )}
 
       {/* Marcador */}
-      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #8B6914, 0 8px 32px rgba(0,0,0,0.8)`, position: 'relative' as const }}>
-        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
-        <div style={{ background: canchMode ? '#001a0a' : 'linear-gradient(160deg, #0a2810 0%, #071c0a 30%, #041208 60%, #071c0a 100%)', padding: '16px 16px 24px' }}>
+      <div style={{ margin: '16px', borderRadius: 16, overflow: 'hidden', boxShadow: `0 0 0 2px ${gold}, 0 0 0 5px #3a6b20, 0 8px 32px rgba(0,0,0,0.9)`, position: 'relative' as const }}>
+        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #3a6b20, ${gold}, #3a6b20, ${darkBg})`, height: 4 }} />
+        <div style={{ background: grassBg, padding: '16px 16px 24px', position: 'relative' as const }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', zIndex: 1 }}>
 
-          {/* Cronómetro */}
-          <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            {clock ? (
-              <>
-                <div style={{ fontSize: 10, color: `${gold}aa`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 4, textTransform: 'uppercase' as const }}>
-                  Tiempo {clock.chukker}
+            {/* Cronómetro */}
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              {clock ? (
+                <>
+                  <div style={{ fontSize: 10, color: clockIsOvertime ? '#ef4444' : `${gold}cc`, letterSpacing: 3, fontFamily: 'Georgia, serif', marginBottom: 6, textTransform: 'uppercase' as const }}>
+                    {periodLabel}{clockIsOvertime ? ' — TIEMPO ADICIONAL' : ''}
+                  </div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.7)', borderRadius: 10, padding: '8px 16px', border: `1px solid ${clockIsOvertime ? '#ef444466' : '#00ff8844'}` }}>
+                    {getDisplayTime().split('').map((char, i) => (
+                      <DigitalDigit key={i} value={char} overtime={clockIsOvertime} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 10, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 6, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
+                    {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ TIEMPO FINALIZADO'}
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 11, color: `${gold}55`, fontFamily: 'Georgia, serif', letterSpacing: 2, padding: '4px 0' }}>
+                  — LISTO PARA INICIAR —
                 </div>
-                <div style={{
-                  fontSize: clock.status === 'stopped' ? 36 : 52,
-                  fontWeight: 900, fontFamily: 'monospace', letterSpacing: 3,
-                  color: clockIsOvertime ? '#ef4444' : clock.status === 'stopped' ? `${gold}cc` : '#fff',
-                  textShadow: clockIsOvertime ? '0 0 28px rgba(239,68,68,0.7)' : clock.status === 'stopped' ? 'none' : '0 0 16px rgba(255,255,255,0.2)',
-                  transition: 'color 0.3s, text-shadow 0.3s',
-                  opacity: clock.status === 'stopped' ? 0.75 : 1,
-                }}>
-                  {clockIsOvertime ? '+' : ''}{formatClockTime(clock.status === 'stopped' ? stoppedRemaining : clockRemaining)}
-                </div>
-                <div style={{ fontSize: 10, color: clock.status === 'running' ? '#4ade80' : clock.status === 'paused' ? gold : '#555', marginTop: 4, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>
-                  {clock.status === 'running' ? '▶ EN JUEGO' : clock.status === 'paused' ? '⏸ PAUSADO' : '⏹ TIEMPO FINALIZADO'}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 11, color: `${gold}55`, fontFamily: 'Georgia, serif', letterSpacing: 2, padding: '4px 0' }}>
-                — LISTO PARA INICIAR —
-              </div>
-            )}
-          </div>
-
-          {/* Botones cronómetro — solo admin */}
-          {isAdmin && match.status !== 'finished' && (
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
-              {!clock && (
-                <button onClick={() => startClock(1)}
-                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
-                  Iniciar Tiempo
-                </button>
               )}
-              {clock?.status === 'running' && (
-                clockRemaining <= 0 ? (
-                  <button onClick={stopClock}
-                    style={{ background: 'linear-gradient(135deg, #1a0a0a, #062B14)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(239,68,68,0.25)' }}>
-                    Finalizar Tiempo
+            </div>
+
+            {/* Botones cronómetro */}
+            {isAdmin && match.status !== 'finished' && (
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 16, flexWrap: 'wrap' as const }}>
+                {!clock && (
+                  <button onClick={() => startClock(1)}
+                    style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    Iniciar 1° Tiempo
                   </button>
-                ) : (
+                )}
+                {clock?.status === 'running' && (
+                  clockIsOvertime ? (
+                    <button onClick={stopClock}
+                      style={{ background: 'linear-gradient(135deg, #3a0000, #600000)', border: '1px solid #ef444466', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      Finalizar Tiempo
+                    </button>
+                  ) : (
+                    <>
+                      <button onClick={pauseClock}
+                        style={{ background: 'linear-gradient(135deg, #1a1400, #2a2000)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                        Pausar
+                      </button>
+                      <button onClick={stopClock}
+                        style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                        Finalizar Tiempo
+                      </button>
+                    </>
+                  )
+                )}
+                {clock?.status === 'paused' && (
                   <>
-                    <button onClick={pauseClock}
-                      style={{ background: 'linear-gradient(135deg, #1a1400, #2a2000)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                      Pausar
+                    <button onClick={resumeClock}
+                      style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                      Reanudar
                     </button>
                     <button onClick={stopClock}
                       style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                       Finalizar Tiempo
                     </button>
                   </>
-                )
-              )}
-              {clock?.status === 'paused' && (
-                <>
-                  <button onClick={resumeClock}
+                )}
+                {clock?.status === 'stopped' && clock.chukker < totalPeriods && (
+                  <button onClick={() => startClock(clock.chukker + 1)}
                     style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                    Reanudar
+                    Iniciar {clock.chukker + 1 === 2 ? '2° Tiempo' : `Tiempo ${clock.chukker + 1}`}
                   </button>
-                  <button onClick={stopClock}
-                    style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '11px 20px', cursor: 'pointer', color: `${gold}88`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                    Finalizar Tiempo
-                  </button>
-                </>
-              )}
-              {clock?.status === 'stopped' && (
-                <button onClick={() => startClock(clock.chukker + 1)}
-                  style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '11px 28px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1, boxShadow: '0 2px 8px rgba(74,222,128,0.2)' }}>
-                  Iniciar Tiempo {clock.chukker + 1}
-                </button>
-              )}
-            </div>
-          )}
-
-          <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${gold}33, transparent)`, marginBottom: 16 }} />
-
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Equipo local */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
-              <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_home?.name}</p>
-              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_home?.handicap ?? 0}</p>
-              <FlapScore score={homeGoals} highlight={canchMode} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_home_id)} pendingCount={homePending} />
-            </div>
-
-            {/* Medallón tiempo */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, width: 68, flexShrink: 0 }}>
-              <div style={{ width: 52, height: 52, borderRadius: '50%', background: match.status === 'live' ? `radial-gradient(circle, #B8960C 0%, #8B6914 50%, #6B4F10 100%)` : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, boxShadow: match.status === 'live' ? `0 0 0 2px ${gold}, 0 4px 12px rgba(0,0,0,0.6)` : 'none' }}>
-                {match.status === 'live' && <>
-                  <span style={{ color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>T.</span>
-                  <span style={{ color: '#fff', fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{chukker}</span>
-                </>}
+                )}
               </div>
-              <div style={{ width: 1, height: 30, background: `linear-gradient(180deg, transparent, ${gold}66, transparent)` }} />
-            </div>
+            )}
 
-            {/* Equipo visitante */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-              <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
-              <p style={{ fontSize: 14, fontWeight: 700, color: canchMode ? '#FFE000' : gold, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{match.team_away?.name}</p>
-              <p style={{ color: '#888', fontSize: 11, margin: 0 }}>G: {match.team_away?.handicap ?? 0}</p>
-              <FlapScore score={awayGoals} highlight={canchMode} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_away_id)} pendingCount={awayPending} />
+            <div style={{ height: 1, background: `linear-gradient(90deg, transparent, ${gold}55, transparent)`, marginBottom: 16 }} />
+
+            {/* Equipos y marcador */}
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={52} />
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>{match.team_home?.name}</p>
+                <DigitalScore score={homeGoals} overtime={clockIsOvertime} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_home_id)} pendingCount={homePending} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 40, flexShrink: 0 }}>
+                <span style={{ fontFamily: "'Orbitron', monospace", fontSize: 48, fontWeight: 900, color: clockIsOvertime ? '#ef4444' : '#00ff88', textShadow: clockIsOvertime ? '0 0 10px rgba(239,68,68,0.8)' : '0 0 10px rgba(0,255,136,0.8)', lineHeight: 1 }}>:</span>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={52} />
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>{match.team_away?.name}</p>
+                <DigitalScore score={awayGoals} overtime={clockIsOvertime} isAdmin={isAdmin && match.status !== 'finished'} onTap={() => addGoalNoPlayer(match.team_away_id)} pendingCount={awayPending} />
+              </div>
             </div>
           </div>
         </div>
-        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #8B6914, ${gold}, #8B6914, ${darkBg})`, height: 4 }} />
+        <div style={{ background: `linear-gradient(90deg, ${darkBg}, #3a6b20, ${gold}, #3a6b20, ${darkBg})`, height: 4 }} />
       </div>
 
-      {/* Panel asignación de jugadores */}
+      {/* Panel asignación */}
       {isAdmin && match.status !== 'finished' && (
         <div style={{ padding: '0 16px 16px' }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, marginTop: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
@@ -498,7 +491,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
             <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Tiempo:</span>
             <input style={{ background: darkBg, border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              type="number" min={1} max={tournament.periods_per_match} value={chukker} onChange={e => setChukker(Number(e.target.value))} />
+              type="number" min={1} max={tournament.periods_per_match} value={period} onChange={e => setPeriod(Number(e.target.value))} />
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
