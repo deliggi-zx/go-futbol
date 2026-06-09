@@ -292,7 +292,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   const gold = '#C9A84C'
   const goldLight = '#E8C96A'
-  const darkBg = '#062B14'
   const clockColor = clockIsOvertime ? '#ef4444' : '#00ff88'
   const clockGlow = clockIsOvertime ? 'rgba(239,68,68,0.9)' : 'rgba(0,255,136,0.9)'
 
