@@ -52,6 +52,16 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsAdmin(!!session)
     })
+  }, [])useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('owner_id', session.user.id)
+        .single()
+      if (org && org.id === tournament.org_id) setIsAdmin(true)
+    })
   }, [])
 
   useEffect(() => {
