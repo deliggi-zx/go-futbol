@@ -188,8 +188,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function addGoalNoPlayer(teamId: string) {
     if (saving) return
     setSaving(true)
-    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker: period })
-    await supabase.from('matches').update({ status: 'live', chukker_current: period }).eq('id', match.id)
+    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, period: period })
+    await supabase.from('matches').update({ status: 'live', period_current: period }).eq('id', match.id)
     await loadData()
     setSaving(false)
   }
