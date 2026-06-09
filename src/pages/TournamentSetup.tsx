@@ -189,10 +189,11 @@ function downloadTemplate() {
         for (const player of validPlayers) {
           let photoUrl = null
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
-          await supabase.from('players').insert({
+          const { error: playerError } = await supabase.from('players').insert({
             team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
             position: player.position, bio: player.bio,
           })
+          if (playerError) throw new Error(`INSERT jugador ${player.name}: ${playerError.message}`)
         }
       }
 
