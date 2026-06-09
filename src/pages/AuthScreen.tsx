@@ -54,7 +54,7 @@ export default function AuthScreen({ onLogin }: Props) {
         </div>
 
         
-        <button style={styles.btn} disabled={loading} onClick={tab === 'login' ? handleLogin : handleRegister}>
+        <button style={styles.btn} disabled={loading} onClick={handleLogin}>
           {loading ? 'Cargando...' : tab === 'login' ? 'Entrar' : 'Crear cuenta'}
         </button>
       </div>
