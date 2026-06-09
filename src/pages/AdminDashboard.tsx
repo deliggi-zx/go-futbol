@@ -22,7 +22,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
   async function loadTournaments() {
     const { data } = await supabase
       .from('tournaments')
-      .select('*')
+      .select('id, name, date, format, status, finished_at, winner_team_name, periods_per_match')
       .eq('org_id', org.id)
       .order('created_at', { ascending: false })
     setTournaments(data ?? [])
