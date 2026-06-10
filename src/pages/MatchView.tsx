@@ -103,9 +103,16 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   })()
 
   function ringBell() {
-    if (!soundOnRef.current) return
-    try { const audio = new Audio('/bell.wav'); audio.volume = 1.0; audio.play().catch(() => {}) } catch (e) {}
-  }
+  if (!soundOnRef.current) return
+  try {
+    const whistle = new Audio('/whistle.wav')
+    const crowd = new Audio('/crowd.wav')
+    whistle.volume = 1.0
+    crowd.volume = 0.7
+    whistle.play().catch(() => {})
+    crowd.play().catch(() => {})
+  } catch (e) {}
+}
 
   async function loadClock() {
     const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
