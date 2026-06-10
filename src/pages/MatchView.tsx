@@ -82,6 +82,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [showQR, setShowQR] = useState(false)
   const [soundOn, setSoundOn] = useState(true)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
+  const [cards, setCards] = useState<any[]>([])
+  const [showCardPanel, setShowCardPanel] = useState(false)
   const soundOnRef = useRef(true)
 
   const [clock, setClock] = useState<any | null>(null)
@@ -139,16 +141,18 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function loadData() {
     setLoading(true)
-    const [g, p, v, m] = await Promise.all([
+    const [g, p, v, m, c] = await Promise.all([
       supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).order('created_at'),
       supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]),
       supabase.from('mvp_votes').select('id, player_id, device_id, player:players(*)').eq('match_id', match.id),
       supabase.from('mvp_official').select('*, player:players(*)').eq('match_id', match.id).single(),
+      supabase.from('cards').select('*, player:players(*)').eq('match_id', match.id).order('created_at'),
     ])
     setGoals(g.data ?? [])
     setPlayers(p.data ?? [])
     setMvpVotes(v.data ?? [])
     setMvpOfficial(m.data)
+    setCards(c.data ?? [])
     setLoading(false)
   }
 
@@ -236,7 +240,31 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     localStorage.setItem(`voted_match_${match.id}`, 'true')
     await loadData()
   }
+async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red') {
+    const playerYellows = cards.filter(c => c.player_id === playerId && c.card_type === 'yellow').length
+    const isExpelled = cards.some(c => c.player_id === playerId && c.card_type === 'red')
+    if (isExpelled) return
+    let finalType: 'yellow' | 'red' = type
+    if (type === 'yellow' && playerYellows >= 1) {
+      finalType = 'red'
+    }
+    await supabase.from('cards').insert({
+      match_id: match.id,
+      player_id: playerId,
+      team_id: teamId,
+      card_type: finalType,
+      period: period,
+    })
+    await loadData()
+  }
 
+  function isPlayerExpelled(playerId: string) {
+    return cards.some(c => c.player_id === playerId && c.card_type === 'red')
+  }
+
+  function getPlayerYellows(playerId: string) {
+    return cards.filter(c => c.player_id === playerId && c.card_type === 'yellow').length
+  }
   async function setOfficialMvp(playerId: string) {
     await supabase.from('mvp_official').upsert({ match_id: match.id, player_id: playerId })
     await loadData()
@@ -460,6 +488,17 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           {/* Borde dorado inferior */}
           <div style={{ height: 2, background: `linear-gradient(90deg, transparent, ${gold}88, transparent)`, marginTop: 20 }} />
 
+          {/* Amonestados y expulsados */}
+          {cards.length > 0 && (
+            <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap' as const, gap: 6, justifyContent: 'center' }}>
+              {cards.map(c => (
+                <span key={c.id} style={{ fontSize: 11, color: c.card_type === 'red' ? '#ef4444' : '#facc15', fontFamily: 'Georgia, serif', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: '2px 10px', border: `1px solid ${c.card_type === 'red' ? '#ef444444' : '#facc1544'}` }}>
+                  {c.card_type === 'red' ? '🟥' : '🟨'} {c.player?.name ?? '?'}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Botones cronómetro */}
           {isAdmin && match.status !== 'finished' && (
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16, flexWrap: 'wrap' as const }}>
@@ -565,6 +604,56 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
               Finalizar partido
             </button>
           </div>
+        </div>
+      )}
+
+{/* Panel tarjetas */}
+      {isAdmin && match.status !== 'finished' && (
+        <div style={{ margin: '0 16px 16px' }}>
+          <button
+            onClick={() => setShowCardPanel(!showCardPanel)}
+            style={{ width: '100%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, border: `1px solid ${gold}33`, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>TARJETAS</span>
+            <span style={{ fontSize: 18 }}>{showCardPanel ? '▲' : '▼'}</span>
+          </button>
+
+          {showCardPanel && (
+            <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: '0 0 12px 12px', border: `1px solid ${gold}33`, borderTop: 'none', padding: 16 }}>
+              {[
+                { team: match.team_home, teamId: match.team_home_id },
+                { team: match.team_away, teamId: match.team_away_id }
+              ].map(({ team, teamId }) => (
+                <div key={teamId} style={{ marginBottom: 16 }}>
+                  <p style={{ color: gold, fontSize: 12, fontWeight: 700, letterSpacing: 1, marginBottom: 8, fontFamily: 'Georgia, serif' }}>{team?.name}</p>
+                  {players.filter(p => p.team_id === teamId).map(player => {
+                    const expelled = isPlayerExpelled(player.id)
+                    const yellows = getPlayerYellows(player.id)
+                    return (
+                      <div key={player.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, opacity: expelled ? 0.5 : 1 }}>
+                        <Avatar url={player.photo_url} name={player.name} size={28} />
+                        <span style={{ flex: 1, fontSize: 13, fontFamily: 'Georgia, serif', color: expelled ? '#ef4444' : '#fff' }}>
+                          {player.name}
+                          {expelled ? ' 🟥 EXPULSADO' : yellows > 0 ? ' 🟨' : ''}
+                        </span>
+                        {!expelled && (
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button onClick={() => addCard(player.id, teamId, 'yellow')}
+                              style={{ background: '#ca8a04', border: 'none', borderRadius: 6, width: 32, height: 32, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              🟨
+                            </button>
+                            <button onClick={() => addCard(player.id, teamId, 'red')}
+                              style={{ background: '#dc2626', border: 'none', borderRadius: 6, width: 32, height: 32, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              🟥
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
