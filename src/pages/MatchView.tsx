@@ -90,6 +90,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const clockRef = useRef<any | null>(null)
   const [liveElapsed, setLiveElapsed] = useState(0)
   const bellFiredRef = useRef(false)
+  const whistleRef = useRef<HTMLAudioElement | null>(null)
+  const crowdRef = useRef<HTMLAudioElement | null>(null)
 
   const periodSeconds = (tournament.chukker_duration_minutes ?? 45) * 60
   const totalPeriods = tournament.periods_per_match ?? 2
@@ -104,17 +106,24 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     return id
   })()
 
+  useEffect(() => {
+    const w = new Audio('/whistle.wav')
+    w.volume = 1.0
+    w.preload = 'auto'
+    whistleRef.current = w
+    const c = new Audio('/crowd.wav')
+    c.volume = 0.7
+    c.preload = 'auto'
+    crowdRef.current = c
+  }, [])
+
   function ringBell() {
-  if (!soundOnRef.current) return
-  try {
-    const whistle = new Audio('/whistle.wav')
-    const crowd = new Audio('/crowd.wav')
-    whistle.volume = 1.0
-    crowd.volume = 0.7
-    whistle.play().catch(() => {})
-    crowd.play().catch(() => {})
-  } catch (e) {}
-}
+    if (!soundOnRef.current) return
+    try {
+      if (whistleRef.current) { whistleRef.current.currentTime = 0; whistleRef.current.play().catch(() => {}) }
+      if (crowdRef.current) { crowdRef.current.currentTime = 0; crowdRef.current.play().catch(() => {}) }
+    } catch (e) {}
+  }
 
   async function loadClock() {
     const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
@@ -198,6 +207,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function addGoalNoPlayer(teamId: string) {
     if (saving) return
+    if (!clock || clock.status !== 'running') {
+      alert('Iniciá el cronómetro antes de registrar un gol.')
+      return
+    }
     setSaving(true)
     await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, period: period })
     await supabase.from('matches').update({ status: 'live', period_current: period }).eq('id', match.id)
@@ -205,9 +218,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setSaving(false)
   }
 
-  async function assignPlayer(playerId: string) {
+  async function assignPlayer(playerId: string, teamId: string) {
     const pending = goals
-      .filter(g => !g.player_id)
+      .filter(g => !g.player_id && g.team_id === teamId)
       .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
     if (pending.length === 0) return
     await supabase.from('goals').update({ player_id: playerId }).eq('id', pending[0].id)
@@ -567,28 +580,36 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               <p style={{ color: homePending > 0 ? '#fb923c' : gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 {match.team_home?.name}{homePending > 0 ? ` (${homePending} ⚡)` : ''}
               </p>
-              {players.filter(p => p.team_id === match.team_home_id).map(player => (
-                <button key={player.id} disabled={saving}
-                  onClick={() => assignPlayer(player.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
-                  <Avatar url={player.photo_url} name={player.name} size={32} />
-                  <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
-                </button>
-              ))}
+              {players.filter(p => p.team_id === match.team_home_id && !isPlayerExpelled(p.id)).map(player => {
+                const yellows = getPlayerYellows(player.id)
+                return (
+                  <button key={player.id} disabled={saving}
+                    onClick={() => assignPlayer(player.id, player.team_id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: homePending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${homePending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: homePending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: homePending > 0 ? 1 : 0.5 }}>
+                    <Avatar url={player.photo_url} name={player.name} size={32} />
+                    <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                    {yellows > 0 && <span style={{ fontSize: 13 }}>{Array(yellows).fill('🟨').join('')}</span>}
+                  </button>
+                )
+              })}
             </div>
             <div style={{ width: 1, background: `linear-gradient(180deg, transparent, ${gold}44, transparent)` }} />
             <div style={{ flex: 1 }}>
               <p style={{ color: awayPending > 0 ? '#fb923c' : gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 {match.team_away?.name}{awayPending > 0 ? ` (${awayPending} ⚡)` : ''}
               </p>
-              {players.filter(p => p.team_id === match.team_away_id).map(player => (
-                <button key={player.id} disabled={saving}
-                  onClick={() => assignPlayer(player.id)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
-                  <Avatar url={player.photo_url} name={player.name} size={32} />
-                  <span style={{ fontFamily: 'Georgia, serif' }}>{player.name}</span>
-                </button>
-              ))}
+              {players.filter(p => p.team_id === match.team_away_id && !isPlayerExpelled(p.id)).map(player => {
+                const yellows = getPlayerYellows(player.id)
+                return (
+                  <button key={player.id} disabled={saving}
+                    onClick={() => assignPlayer(player.id, player.team_id)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: awayPending > 0 ? 'rgba(251,146,60,0.15)' : 'rgba(0,0,0,0.4)', border: `1px solid ${awayPending > 0 ? '#fb923c88' : gold + '44'}`, borderRadius: 10, padding: '10px 12px', cursor: awayPending > 0 ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: awayPending > 0 ? 1 : 0.5 }}>
+                    <Avatar url={player.photo_url} name={player.name} size={32} />
+                    <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                    {yellows > 0 && <span style={{ fontSize: 13 }}>{Array(yellows).fill('🟨').join('')}</span>}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -683,7 +704,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                   <div style={{ background: 'rgba(0,0,0,0.6)', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
                     <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
                     <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                      {players.filter(p => p.team_id === g.team_id).map(player => (
+                      {players.filter(p => p.team_id === g.team_id && !isPlayerExpelled(p.id)).map(player => (
                         <button key={player.id}
                           onClick={() => reassignGoal(g.id, player.id)}
                           style={{ background: g.player_id === player.id ? gold : 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
