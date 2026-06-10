@@ -457,7 +457,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             whiteSpace: 'nowrap' as const,
             transition: 'color 0.2s',
           }}>
-            {t === 'fixture' ? 'Fixture' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Stats' : t === 'teams' ? 'Equipos' : 'Premios'}
+            {t === 'fixture' ? 'Fixture' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Estadísticas' : t === 'teams' ? 'Equipos' : 'Premios'}
           </button>
         ))}
       </div>
@@ -598,7 +598,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                           <Avatar url={team.logo_url} name={team.name} size={48} />
                           <div>
                             <p style={{ fontWeight: 800, fontSize: 16, margin: 0, color: '#fff', fontFamily: 'Georgia, serif' }}>{team.name}</p>
-                            <p style={{ color: '#a8d5b5', fontSize: 12, margin: '2px 0 0', fontFamily: 'Georgia, serif' }}>Grupo {team.group_name} · H: {team.handicap}</p>
+                            <p style={{ color: '#a8d5b5', fontSize: 12, margin: '2px 0 0', fontFamily: 'Georgia, serif' }}>Grupo {team.group_name}</p>
                           </div>
                         </div>
                         {isAdmin && (
