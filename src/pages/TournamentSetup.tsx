@@ -79,11 +79,11 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   }
 
   function addPlayer(teamIdx: number) {
-    setTeams(prev => prev.map((t, i) => i === teamIdx
-      ? { ...t, players: [...t.players, { name: '', photo: null, handicap: 0, position: 0, bio: '' }] }
-      : t
-    ))
-  }
+  setTeams(prev => prev.map((t, i) => i === teamIdx
+    ? { ...t, players: [...t.players, { name: '', photo: null, numero: 0, goles: 0, titular: 'S', bio: '' }] }
+    : t
+  ))
+}
 
   function addAward() {
     if (!newAward.trim()) return
