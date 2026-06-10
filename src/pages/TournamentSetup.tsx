@@ -5,8 +5,8 @@ import * as XLSX from 'xlsx'
 type Props = { onCreated: (t: any) => void; orgId?: string }
 
 const emptyTeam = (group = 'A') => ({
-  name: '', handicap: 0, group, logo: null as File | null,
-  players: [{ name: '', photo: null as File | null, handicap: 0, position: 0, bio: '' }]
+  name: '', group, logo: null as File | null,
+  players: [{ name: '', photo: null as File | null, numero: 0, goles: 0, titular: 'S', bio: '' }]
 })
 
 const DEFAULT_AWARDS = ['Campeón', 'Mejor Jugador', 'Revelación', 'Goleador', 'Mejor Arquero']
@@ -91,16 +91,17 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
     setNewAward('')
   }
 function downloadTemplate() {
-    const data = [
-      { equipo: 'Tribu Fútbol', grupo: 'A', handicap_equipo: 10, jugador: 'Juan Pérez', handicap_jugador: 3, posicion: 1, reseña: 'Descripción breve' },
-      { equipo: 'Tribu Fútbol', grupo: 'A', handicap_equipo: 10, jugador: 'Pedro García', handicap_jugador: 4, posicion: 2, reseña: '' },
-      { equipo: 'La Dolfina', grupo: 'B', handicap_equipo: 8, jugador: 'Carlos López', handicap_jugador: 2, posicion: 3, reseña: '' },
-    ]
-    const ws = XLSX.utils.json_to_sheet(data)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
-    XLSX.writeFile(wb, 'plantilla_gofutbol.xlsx')
-  }
+  const data = [
+    { grupo: 'A', equipo: 'Tribu Fútbol', jugador: 'Juan Pérez', numero: 1, goles: 0, titular: 'S', reseña: 'Arquero seguro' },
+    { grupo: 'A', equipo: 'Tribu Fútbol', jugador: 'Pedro García', numero: 2, goles: 0, titular: 'S', reseña: '' },
+    { grupo: 'B', equipo: 'La Dolfina', jugador: 'Carlos López', numero: 3, goles: 0, titular: 'N', reseña: '' },
+  ]
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
+  XLSX.writeFile(wb, 'plantilla_gofutbol.xlsx')
+}
+ 
 
   function handleExcelUpload(file: File) {
     const reader = new FileReader()
@@ -113,28 +114,28 @@ function downloadTemplate() {
       // Agrupar filas por equipo
       const teamsMap: Record<string, any> = {}
       for (const row of rows) {
-        const teamName = String(row.equipo ?? '').trim()
-        if (!teamName) continue
-        if (!teamsMap[teamName]) {
-          teamsMap[teamName] = {
-            name: teamName,
-            group: String(row.grupo ?? 'A').trim().toUpperCase(),
-            handicap: Number(row.handicap_equipo ?? 0),
-            logo: null,
-            players: []
-          }
-        }
-        const playerName = String(row.jugador ?? '').trim()
-        if (playerName) {
-          teamsMap[teamName].players.push({
-            name: playerName,
-            photo: null,
-            handicap: Number(row.handicap_jugador ?? 0),
-            position: Number(row.posicion ?? 0),
-            bio: String(row.reseña ?? '')
-          })
-        }
-      }
+  const teamName = String(row.equipo ?? '').trim()
+  if (!teamName) continue
+  if (!teamsMap[teamName]) {
+    teamsMap[teamName] = {
+      name: teamName,
+      group: String(row.grupo ?? 'A').trim().toUpperCase(),
+      logo: null,
+      players: []
+    }
+  }
+  const playerName = String(row.jugador ?? '').trim()
+  if (playerName) {
+    teamsMap[teamName].players.push({
+      name: playerName,
+      photo: null,
+      numero: Number(row.numero ?? 0),
+      goles: Number(row.goles ?? 0),
+      titular: String(row.titular ?? 'S').trim().toUpperCase(),
+      bio: String(row.reseña ?? '')
+    })
+  }
+}
 
       const importedTeams = Object.values(teamsMap)
       if (importedTeams.length === 0) { alert('No se encontraron equipos en el archivo'); return }
