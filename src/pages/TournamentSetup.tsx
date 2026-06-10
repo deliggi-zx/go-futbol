@@ -183,7 +183,7 @@ function downloadTemplate() {
 
         const { data: savedTeam } = await supabase
           .from('teams')
-          .insert({ tournament_id: tournament.id, name: team.name, handicap: team.handicap, group_name: team.group, logo_url: logoUrl })
+          .insert({ tournament_id: tournament.id, name: team.name, group_name: team.group, logo_url: logoUrl })
           .select().single()
 
         const validPlayers = team.players.filter(p => p.name.trim())
@@ -192,7 +192,7 @@ function downloadTemplate() {
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
           const { error: playerError } = await supabase.from('players').insert({
             team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
-            position: player.position, bio: player.bio,
+            position: player.numero, bio: player.bio,
           })
           if (playerError) throw new Error(`INSERT jugador ${player.name}: ${playerError.message}`)
         }
@@ -420,8 +420,7 @@ function downloadTemplate() {
                   <div style={{ flex: 1 }}>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder={`Jugador ${j + 1}`} value={player.name} onChange={e => updatePlayer(i, j, 'name', e.target.value)} />
                     <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-                      <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Hcp" min={0} max={10} value={player.handicap} onChange={e => updatePlayer(i, j, 'handicap', Number(e.target.value))} />
-                      <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Pos" min={1} max={4} value={player.position} onChange={e => updatePlayer(i, j, 'position', Number(e.target.value))} />
+                      <input style={{ ...styles.input, width: 80 }} type="number" placeholder="Nro" min={0} max={99} value={player.numero} onChange={e => updatePlayer(i, j, 'numero', Number(e.target.value))} />
                     </div>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Reseña breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
                     <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
