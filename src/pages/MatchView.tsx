@@ -144,6 +144,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_votes', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
@@ -256,19 +257,22 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red') {
     const playerYellows = cards.filter(c => c.player_id === playerId && c.card_type === 'yellow').length
     const isExpelled = cards.some(c => c.player_id === playerId && c.card_type === 'red')
-    if (isExpelled) return
+    if (isExpelled || saving) return
     let finalType: 'yellow' | 'red' = type
     if (type === 'yellow' && playerYellows >= 1) {
       finalType = 'red'
     }
-    await supabase.from('cards').insert({
+    setSaving(true)
+    const { error } = await supabase.from('cards').insert({
       match_id: match.id,
       player_id: playerId,
       team_id: teamId,
       card_type: finalType,
       period: period,
     })
+    if (error) { alert(`Error al registrar tarjeta: ${error.message}`); setSaving(false); return }
     await loadData()
+    setSaving(false)
   }
 
   function isPlayerExpelled(playerId: string) {
