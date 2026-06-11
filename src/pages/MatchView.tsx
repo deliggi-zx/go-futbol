@@ -366,7 +366,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
   return (
     <div style={{
       minHeight: '100vh',
-      background: `url('/grass.jpg') center center / cover`,
+      background: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/grass.jpg') center center / cover`,
       color: '#fff',
     }}>
 

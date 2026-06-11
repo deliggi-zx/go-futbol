@@ -34,6 +34,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [showFixtureManager, setShowFixtureManager] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [isScorerAdmin, setIsScorerAdmin] = useState(false)
+  const [cards, setCards] = useState<any[]>([])
   const [visitorsNow, setVisitorsNow] = useState(0)
   const [totalVisits, setTotalVisits] = useState(0)
 
@@ -133,14 +134,16 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     ])
     const matchIds = (m.data ?? []).map((x: any) => x.id)
     const teamIds = (t.data ?? []).map((x: any) => x.id)
-    const [g, p] = await Promise.all([
+    const [g, p, ca] = await Promise.all([
       matchIds.length > 0 ? supabase.from('goals').select('*, player:players(*), team:teams(*)').in('match_id', matchIds) : Promise.resolve({ data: [] }),
       teamIds.length > 0 ? supabase.from('players').select('*, team:teams(*)').in('team_id', teamIds) : Promise.resolve({ data: [] }),
+      matchIds.length > 0 ? supabase.from('cards').select('*, player:players(*), team:teams(*)').in('match_id', matchIds) : Promise.resolve({ data: [] }),
     ])
     setMatches(m.data ?? [])
     setTeams(t.data ?? [])
     setGoals(g.data ?? [])
     setPlayers(p.data ?? [])
+    setCards(ca.data ?? [])
     setLoading(false)
     return m.data ?? []
   }
@@ -178,7 +181,38 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
       if (!counts[g.player.id]) counts[g.player.id] = { player: g.player, goals: 0 }
       counts[g.player.id].goals++
     }
-    return Object.values(counts).sort((a, b) => b.goals - a.goals).slice(0, 10)
+    return Object.values(counts).sort((a, b) => b.goals - a.goals)
+  }
+
+  function getAllTeamStandings() {
+    return teams.map(team => {
+      const teamMatches = matches.filter(m =>
+        m.stage === 'group' && m.status === 'finished' &&
+        (m.team_home_id === team.id || m.team_away_id === team.id)
+      )
+      let pts = 0, gf = 0, gc = 0, w = 0, l = 0, d = 0
+      for (const m of teamMatches) {
+        const myGoals = getMatchGoals(m.id, team.id)
+        const oppId = m.team_home_id === team.id ? m.team_away_id : m.team_home_id
+        const oppGoals = getMatchGoals(m.id, oppId)
+        gf += myGoals; gc += oppGoals
+        if (myGoals > oppGoals) { pts += 3; w++ }
+        else if (myGoals === oppGoals) { pts += 1; d++ }
+        else l++
+      }
+      return { ...team, pts, gf, gc, gd: gf - gc, w, d, l, pj: teamMatches.length }
+    }).sort((a, b) => b.pts - a.pts || b.gd - a.gd)
+  }
+
+  function getDisciplineTable() {
+    const map: Record<string, { player: any; team: any; yellows: number; reds: number }> = {}
+    for (const c of cards) {
+      if (!c.player) continue
+      if (!map[c.player_id]) map[c.player_id] = { player: c.player, team: c.team, yellows: 0, reds: 0 }
+      if (c.card_type === 'yellow') map[c.player_id].yellows++
+      else if (c.card_type === 'red') map[c.player_id].reds++
+    }
+    return Object.values(map).sort((a, b) => (b.reds * 10 + b.yellows) - (a.reds * 10 + a.yellows))
   }
 
   async function uploadImage(file: File, path: string): Promise<string | null> {
@@ -220,7 +254,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const styles = {
     container: {
       minHeight: '100vh',
-      background: `url('/grass.jpg') center center / cover fixed`,
+      background: `linear-gradient(rgba(0,0,0,0.60), rgba(0,0,0,0.60)), url('/grass.jpg') center center / cover fixed`,
       color: '#fff',
     },
     input: { width: '100%', background: darkBg, border: borderGold, borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: 14, boxSizing: 'border-box' as const, fontFamily: 'Georgia, serif' },
@@ -562,19 +596,86 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           /* ── STATS ── */
           ) : tab === 'stats' ? (
             <>
+              {/* Tabla de Posiciones */}
+              <p style={styles.sectionLabel}>TABLA DE POSICIONES</p>
+              <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                {goldBar}
+                <div style={{ background: cardBg, overflowX: 'auto' as const }}>
+                  <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 11, padding: '8px 10px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1, minWidth: 360 }}>
+                    <span style={{ flex: 1 }}>Equipo</span>
+                    {['PJ','PG','PE','PP','GF','GC','DG'].map(h => <span key={h} style={{ width: 26, textAlign: 'center' as const }}>{h}</span>)}
+                    <span style={{ width: 34, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>PTS</span>
+                  </div>
+                  {getAllTeamStandings().length === 0
+                    ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Sin partidos finalizados</p>
+                    : getAllTeamStandings().map((team, i) => (
+                      <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '9px 10px', borderBottom: `1px solid ${gold}22`, background: i < 2 ? `rgba(201,168,76,0.07)` : 'transparent', minWidth: 360 }}>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ color: '#a8d5b5', fontSize: 11, width: 14 }}>{i + 1}</span>
+                          <Avatar url={team.logo_url} name={team.name} size={22} />
+                          <span style={{ fontWeight: i < 2 ? 700 : 400, fontFamily: 'Georgia, serif', fontSize: 12 }}>{team.name}</span>
+                        </div>
+                        {[team.pj, team.w, team.d, team.l, team.gf, team.gc].map((val, idx) => (
+                          <span key={idx} style={{ width: 26, textAlign: 'center' as const, color: '#a8d5b5', fontSize: 12 }}>{val}</span>
+                        ))}
+                        <span style={{ width: 26, textAlign: 'center' as const, fontSize: 12, color: team.gd > 0 ? '#4ade80' : team.gd < 0 ? '#ef4444' : '#a8d5b5' }}>
+                          {team.gd > 0 ? `+${team.gd}` : team.gd}
+                        </span>
+                        <span style={{ width: 34, textAlign: 'center' as const, fontWeight: 900, color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>{team.pts}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+                {goldBar}
+              </div>
+
+              {/* Goleadores */}
               <p style={styles.sectionLabel}>GOLEADORES</p>
               <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
                 {goldBar}
                 <div style={{ background: cardBg }}>
+                  <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 11, padding: '8px 14px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    <span style={{ width: 20 }}>#</span>
+                    <span style={{ flex: 1 }}>Jugador</span>
+                    <span style={{ width: 90, textAlign: 'right' as const }}>Equipo</span>
+                    <span style={{ width: 48, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>Goles</span>
+                  </div>
                   {getTopScorers().length === 0
-                    ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center', fontFamily: 'Georgia, serif' }}>Sin goles registrados</p>
+                    ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Sin goles registrados</p>
                     : getTopScorers().map((s, i) => (
-                      <div key={s.player.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, gap: 10 }}>
-                        <span style={{ color: i === 0 ? gold : '#a8d5b5', width: 22, fontFamily: 'Georgia, serif', fontWeight: i === 0 ? 900 : 400 }}>{i + 1}</span>
-                        <Avatar url={s.player.photo_url} name={s.player.name} size={34} />
-                        <span style={{ flex: 1, fontWeight: i === 0 ? 800 : 400, fontFamily: 'Georgia, serif', marginLeft: 4 }}>{s.player.name}</span>
-                        <span style={{ color: '#a8d5b5', fontSize: 12, fontFamily: 'Georgia, serif' }}>{teams.find(t => t.id === s.player.team_id)?.name}</span>
-                        <span style={{ color: gold, fontWeight: 900, fontSize: 20, fontFamily: 'Georgia, serif', marginLeft: 10, textShadow: `0 0 10px rgba(201,168,76,0.4)` }}>{s.goals}</span>
+                      <div key={s.player.id} style={{ display: 'flex', alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${gold}22`, gap: 8 }}>
+                        <span style={{ color: i === 0 ? gold : '#a8d5b5', width: 20, fontFamily: 'Georgia, serif', fontWeight: i === 0 ? 900 : 400, fontSize: 12 }}>{i + 1}</span>
+                        <Avatar url={s.player.photo_url} name={s.player.name} size={28} />
+                        <span style={{ flex: 1, fontWeight: i === 0 ? 800 : 400, fontFamily: 'Georgia, serif', fontSize: 13 }}>{s.player.name}</span>
+                        <span style={{ width: 90, color: '#a8d5b5', fontSize: 11, fontFamily: 'Georgia, serif', textAlign: 'right' as const }}>{teams.find(t => t.id === s.player.team_id)?.name}</span>
+                        <span style={{ width: 48, textAlign: 'center' as const, color: gold, fontWeight: 900, fontSize: 18, fontFamily: 'Georgia, serif', textShadow: `0 0 10px rgba(201,168,76,0.4)` }}>{s.goals}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+                {goldBar}
+              </div>
+
+              {/* Disciplina */}
+              <p style={styles.sectionLabel}>DISCIPLINA</p>
+              <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                {goldBar}
+                <div style={{ background: cardBg }}>
+                  <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 11, padding: '8px 14px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                    <span style={{ flex: 1 }}>Jugador</span>
+                    <span style={{ width: 90, textAlign: 'right' as const }}>Equipo</span>
+                    <span style={{ width: 40, textAlign: 'center' as const }}>🟨</span>
+                    <span style={{ width: 40, textAlign: 'center' as const }}>🟥</span>
+                  </div>
+                  {getDisciplineTable().length === 0
+                    ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Sin tarjetas registradas</p>
+                    : getDisciplineTable().map(entry => (
+                      <div key={entry.player.id} style={{ display: 'flex', alignItems: 'center', padding: '9px 14px', borderBottom: `1px solid ${gold}22`, gap: 8 }}>
+                        <Avatar url={entry.player.photo_url} name={entry.player.name} size={28} />
+                        <span style={{ flex: 1, fontFamily: 'Georgia, serif', fontSize: 13 }}>{entry.player.name}</span>
+                        <span style={{ width: 90, color: '#a8d5b5', fontSize: 11, fontFamily: 'Georgia, serif', textAlign: 'right' as const }}>{entry.team?.name}</span>
+                        <span style={{ width: 40, textAlign: 'center' as const, fontWeight: 700, color: '#facc15', fontSize: 14 }}>{entry.yellows > 0 ? entry.yellows : '–'}</span>
+                        <span style={{ width: 40, textAlign: 'center' as const, fontWeight: 700, color: '#ef4444', fontSize: 14 }}>{entry.reds > 0 ? entry.reds : '–'}</span>
                       </div>
                     ))
                   }
