@@ -17,7 +17,7 @@ const FORMATS = [
   { value: 'knockout', label: 'Eliminacion directa', desc: 'Cruces directos desde el inicio, sin fase de grupos' },
 ]
 
-const TEAM_COUNTS = [4, 6, 8, 10, 12, 16]
+const TEAM_COUNTS = [4, 6, 8, 10, 12, 16, 24, 32, 48]
 
 function getGroupsConfig(teamCount: number, format: string): { numGroups: number; groupNames: string[] } {
   if (format === 'round_robin' || format === 'knockout') {
@@ -27,11 +27,13 @@ function getGroupsConfig(teamCount: number, format: string): { numGroups: number
   if (teamCount <= 6) return { numGroups: 2, groupNames: ['A', 'B'] }
   if (teamCount <= 8) return { numGroups: 2, groupNames: ['A', 'B'] }
   if (teamCount <= 12) return { numGroups: 3, groupNames: ['A', 'B', 'C'] }
-  return { numGroups: 4, groupNames: ['A', 'B', 'C', 'D'] }
+  if (teamCount <= 16) return { numGroups: 4, groupNames: ['A', 'B', 'C', 'D'] }
+  if (teamCount <= 24) return { numGroups: 6, groupNames: ['A', 'B', 'C', 'D', 'E', 'F'] }
+  return { numGroups: 8, groupNames: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] }
 }
 
 export default function TournamentSetup({ onCreated, orgId }: Props) {
-  const [name, setName] = useState('Tribu Fútbol 2026')
+  const [name, setName] = useState('')
   const [date, setDate] = useState('')
   const [chukkers, setChukkers] = useState(2)
   const [teamCount, setTeamCount] = useState(8)
