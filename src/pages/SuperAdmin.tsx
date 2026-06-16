@@ -90,7 +90,8 @@ export default function SuperAdmin() {
             password: newPassword,
             orgName: newName,
             slug: newSlug,
-            plan: newPlan
+            plan: newPlan,
+            app: 'futbol',
           })
         }
       )

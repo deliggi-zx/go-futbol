@@ -34,7 +34,7 @@ serve(async (req) => {
       })
     }
 
-    const { email, password, orgName, slug, plan } = await req.json()
+    const { email, password, orgName, slug, plan, app = 'futbol' } = await req.json()
 
     // Verificar slug único
     const { data: existing } = await supabaseAdmin
@@ -77,7 +77,8 @@ serve(async (req) => {
       owner_id: userData.user.id,
       plan,
       status: 'active',
-      tournaments_remaining: plan === 'trial' ? 1 : plan === 'per_tournament' ? 1 : 0
+      tournaments_remaining: plan === 'trial' ? 1 : plan === 'per_tournament' ? 1 : 0,
+      app,
     })
 
     if (orgError) {
