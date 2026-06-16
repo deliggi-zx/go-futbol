@@ -67,6 +67,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
         group_name: formStage === 'group' ? formGroup : null,
         round: formRound,
         status: 'pending',
+        app: 'futbol',
       }
       if (editingMatch) {
         await supabase.from('matches').update(data).eq('id', editingMatch.id)
@@ -93,7 +94,7 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
     if (!confirm('Marcar walkover? El equipo ganador avanza sin jugar.')) return
     await supabase.from('matches').update({ status: 'finished', played_at: new Date().toISOString() }).eq('id', match.id)
     // Insertar gol simbólico para el ganador (1-0)
-    await supabase.from('goals').insert({ match_id: match.id, team_id: winnerId, player_id: null, chukker: 1 })
+    await supabase.from('goals').insert({ match_id: match.id, team_id: winnerId, player_id: null, chukker: 1, app: 'futbol' })
     onRefresh()
   }
 

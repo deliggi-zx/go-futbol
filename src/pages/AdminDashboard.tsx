@@ -24,6 +24,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
       .from('tournaments')
       .select('id, name, date, format, status, finished_at, winner_team_name, periods_per_match')
       .eq('org_id', org.id)
+      .eq('app', 'futbol')
       .order('created_at', { ascending: false })
     setTournaments(data ?? [])
     setLoading(false)

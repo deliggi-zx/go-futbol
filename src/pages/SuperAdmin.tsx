@@ -61,6 +61,7 @@ export default function SuperAdmin() {
     const { data } = await supabase
       .from('organizations')
       .select('*')
+      .eq('app', 'futbol')
       .order('created_at', { ascending: false })
     setOrgs(data ?? [])
     setLoading(false)

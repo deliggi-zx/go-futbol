@@ -28,6 +28,7 @@ function PublicView() {
       .from('organizations')
       .select('id')
       .eq('slug', slug)
+      .eq('app', 'futbol')
       .single()
 
     if (!org) { setLoading(false); return }
@@ -37,6 +38,7 @@ function PublicView() {
       .from('tournaments')
       .select('id, name, date, periods_per_match, status, format, org_id, created_at, finished_at, winner_team_name')
       .eq('org_id', org.id)
+      .eq('app', 'futbol')
       .neq('status', 'finished')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -88,6 +90,7 @@ function AdminPanel() {
       .from('organizations')
       .select('*')
       .eq('owner_id', session.user.id)
+      .eq('app', 'futbol')
       .single()
     setUser(session.user)
     setOrg(orgData)

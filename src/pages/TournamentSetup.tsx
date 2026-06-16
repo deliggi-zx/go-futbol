@@ -166,14 +166,14 @@ function downloadTemplate() {
     try {
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
-        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration })
+        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, app: 'futbol' })
         .select().single()
       if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message + ' code: ' + tournamentError.code)
       if (!tournament) throw new Error('INSERT torneo devolvió null')
 
       if (awards.length > 0) {
         const { error: awardsError } = await supabase.from('award_types').insert(
-          awards.map((a, i) => ({ tournament_id: tournament.id, name: a, order_index: i }))
+          awards.map((a, i) => ({ tournament_id: tournament.id, name: a, order_index: i, app: 'futbol' }))
         )
         if (awardsError) throw new Error('INSERT awards: ' + awardsError.message + ' code: ' + awardsError.code)
       }
@@ -185,7 +185,7 @@ function downloadTemplate() {
 
         const { data: savedTeam } = await supabase
           .from('teams')
-          .insert({ tournament_id: tournament.id, name: team.name, group_name: team.group, logo_url: logoUrl })
+          .insert({ tournament_id: tournament.id, name: team.name, group_name: team.group, logo_url: logoUrl, app: 'futbol' })
           .select().single()
 
         const validPlayers = team.players.filter(p => p.name.trim())
@@ -194,7 +194,7 @@ function downloadTemplate() {
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
           const { error: playerError } = await supabase.from('players').insert({
             team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
-            position: player.numero, bio: player.bio,
+            position: player.numero, bio: player.bio, app: 'futbol',
           })
           if (playerError) throw new Error(`INSERT jugador ${player.name}: ${playerError.message}`)
         }
@@ -212,7 +212,7 @@ function downloadTemplate() {
 
   async function generateFixture(tournamentId: string, activeTeams: any[], fmt: string) {
     if (fmt === 'round_robin') {
-      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId)
+      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId).eq('app', 'futbol')
       if (!savedTeams) return
       for (let i = 0; i < savedTeams.length; i++) {
         for (let j = i + 1; j < savedTeams.length; j++) {
@@ -220,12 +220,12 @@ function downloadTemplate() {
             tournament_id: tournamentId,
             team_home_id: savedTeams[i].id,
             team_away_id: savedTeams[j].id,
-            stage: 'group', group_name: 'A', status: 'pending'
+            stage: 'group', group_name: 'A', status: 'pending', app: 'futbol',
           })
         }
       }
     } else if (fmt === 'knockout') {
-      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId)
+      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId).eq('app', 'futbol')
       if (!savedTeams) return
       const shuffled = [...savedTeams].sort(() => Math.random() - 0.5)
       for (let i = 0; i < shuffled.length; i += 2) {
@@ -235,7 +235,7 @@ function downloadTemplate() {
             team_home_id: shuffled[i].id,
             team_away_id: shuffled[i + 1].id,
             stage: shuffled.length === 2 ? 'final' : shuffled.length === 4 ? 'semi' : 'quarter',
-            status: 'pending', round: 1
+            status: 'pending', round: 1, app: 'futbol',
           })
         }
       }
@@ -244,7 +244,7 @@ function downloadTemplate() {
       const groups = [...new Set(activeTeams.map(t => t.group))]
       for (const group of groups) {
         const { data: savedTeams } = await supabase
-          .from('teams').select('id').eq('tournament_id', tournamentId).eq('group_name', group)
+          .from('teams').select('id').eq('tournament_id', tournamentId).eq('group_name', group).eq('app', 'futbol')
         if (!savedTeams) continue
         for (let i = 0; i < savedTeams.length; i++) {
           for (let j = i + 1; j < savedTeams.length; j++) {
@@ -252,7 +252,7 @@ function downloadTemplate() {
               tournament_id: tournamentId,
               team_home_id: savedTeams[i].id,
               team_away_id: savedTeams[j].id,
-              stage: 'group', group_name: group, status: 'pending'
+              stage: 'group', group_name: group, status: 'pending', app: 'futbol',
             })
           }
         }

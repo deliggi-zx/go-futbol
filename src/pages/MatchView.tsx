@@ -126,7 +126,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function loadClock() {
-    const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).maybeSingle()
+    const { data, error } = await supabase.from('match_clock').select('*').eq('match_id', match.id).eq('app', 'futbol').maybeSingle()
     if (error) return
     clockRef.current = data
     setClock(data)
@@ -152,11 +152,11 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function loadData() {
     setLoading(true)
     const [g, p, v, m, c] = await Promise.all([
-      supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).order('created_at'),
-      supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]),
-      supabase.from('mvp_votes').select('id, player_id, device_id, player:players(*)').eq('match_id', match.id),
-      supabase.from('mvp_official').select('*, player:players(*)').eq('match_id', match.id).single(),
-      supabase.from('cards').select('*, player:players(*)').eq('match_id', match.id).order('created_at'),
+      supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
+      supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]).eq('app', 'futbol'),
+      supabase.from('mvp_votes').select('id, player_id, device_id, player:players(*)').eq('match_id', match.id).eq('app', 'futbol'),
+      supabase.from('mvp_official').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').single(),
+      supabase.from('cards').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
     ])
     setGoals(g.data ?? [])
     setPlayers(p.data ?? [])
@@ -213,7 +213,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       return
     }
     setSaving(true)
-    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, period: period })
+    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, period: period, app: 'futbol' })
     await supabase.from('matches').update({ status: 'live', period_current: period }).eq('id', match.id)
     await loadData()
     setSaving(false)
@@ -250,7 +250,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function votePlayer(playerId: string) {
     if (hasVoted) return
-    await supabase.from('mvp_votes').insert({ match_id: match.id, player_id: playerId, device_id: deviceId })
+    await supabase.from('mvp_votes').insert({ match_id: match.id, player_id: playerId, device_id: deviceId, app: 'futbol' })
     localStorage.setItem(`voted_match_${match.id}`, 'true')
     await loadData()
   }
@@ -269,6 +269,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       team_id: teamId,
       card_type: finalType,
       period: period,
+      app: 'futbol',
     })
     if (error) { alert(`Error al registrar tarjeta: ${error.message}`); setSaving(false); return }
     await loadData()
@@ -299,7 +300,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       clockRef.current = data; setClock(data); setPeriod(periodNum)
     } else {
       const { data, error } = await supabase.from('match_clock')
-        .insert({ match_id: match.id, chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now })
+        .insert({ match_id: match.id, chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now, app: 'futbol' })
         .select().single()
       if (error) { alert(`Error: ${error.message}`); return }
       clockRef.current = data; setClock(data); setPeriod(periodNum)
@@ -739,7 +740,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               onVote={votePlayer}
               onChangeVote={async (_oldId, newId) => {
                 await supabase.from('mvp_votes').delete().eq('match_id', match.id).eq('device_id', deviceId)
-                await supabase.from('mvp_votes').insert({ match_id: match.id, player_id: newId, device_id: deviceId })
+                await supabase.from('mvp_votes').insert({ match_id: match.id, player_id: newId, device_id: deviceId, app: 'futbol' })
                 localStorage.setItem(`voted_match_${match.id}`, 'true')
                 await loadData()
               }}

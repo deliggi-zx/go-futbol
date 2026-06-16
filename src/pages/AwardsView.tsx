@@ -93,9 +93,9 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
   async function loadData() {
     setLoading(true)
     const [at, aw, g] = await Promise.all([
-      supabase.from('award_types').select('*').eq('tournament_id', tournament.id).order('order_index'),
+      supabase.from('award_types').select('*').eq('tournament_id', tournament.id).eq('app', 'futbol').order('order_index'),
       supabase.from('awards').select('*').eq('tournament_id', tournament.id),
-      supabase.from('gallery_photos').select('*').eq('tournament_id', tournament.id).order('created_at', { ascending: false }),
+      supabase.from('gallery_photos').select('*').eq('tournament_id', tournament.id).eq('app', 'futbol').order('created_at', { ascending: false }),
     ])
     setAwardTypes(at.data ?? [])
     setAwards(aw.data ?? [])
@@ -145,7 +145,7 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
       const path = `gallery/${tournament.id}_${Date.now()}.jpg`
       const url = await uploadImage(file, path)
       if (url) {
-        await supabase.from('gallery_photos').insert({ tournament_id: tournament.id, photo_url: url })
+        await supabase.from('gallery_photos').insert({ tournament_id: tournament.id, photo_url: url, app: 'futbol' })
         await loadData()
       }
     } finally {

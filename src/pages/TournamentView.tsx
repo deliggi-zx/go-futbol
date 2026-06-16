@@ -57,6 +57,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         .from('organizations')
         .select('id')
         .eq('owner_id', session.user.id)
+        .eq('app', 'futbol')
         .single()
         .then(({ data: org }) => {
           if (org && org.id === tournament.org_id) setIsAdmin(true)
@@ -77,17 +78,20 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         .select('id')
         .eq('tournament_id', tournament.id)
         .eq('visitor_id', visitorId)
+        .eq('app', 'futbol')
         .single()
       if (!existing) {
         await supabase.from('tournament_visits').insert({
           tournament_id: tournament.id,
-          visitor_id: visitorId
+          visitor_id: visitorId,
+          app: 'futbol',
         })
       }
       const { count } = await supabase
         .from('tournament_visits')
         .select('*', { count: 'exact', head: true })
         .eq('tournament_id', tournament.id)
+        .eq('app', 'futbol')
       setTotalVisits(count ?? 0)
     }
     registerVisit()
@@ -129,15 +133,15 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   async function loadData() {
     setLoading(true)
     const [m, t] = await Promise.all([
-      supabase.from('matches').select('*, team_home:teams!matches_team_home_id_fkey(*), team_away:teams!matches_team_away_id_fkey(*)').eq('tournament_id', tournament.id).order('created_at'),
-      supabase.from('teams').select('*').eq('tournament_id', tournament.id),
+      supabase.from('matches').select('*, team_home:teams!matches_team_home_id_fkey(*), team_away:teams!matches_team_away_id_fkey(*)').eq('tournament_id', tournament.id).eq('app', 'futbol').order('created_at'),
+      supabase.from('teams').select('*').eq('tournament_id', tournament.id).eq('app', 'futbol'),
     ])
     const matchIds = (m.data ?? []).map((x: any) => x.id)
     const teamIds = (t.data ?? []).map((x: any) => x.id)
     const [g, p, ca] = await Promise.all([
-      matchIds.length > 0 ? supabase.from('goals').select('*, player:players(*), team:teams(*)').in('match_id', matchIds) : Promise.resolve({ data: [] }),
-      teamIds.length > 0 ? supabase.from('players').select('*, team:teams(*)').in('team_id', teamIds) : Promise.resolve({ data: [] }),
-      matchIds.length > 0 ? supabase.from('cards').select('*, player:players(*), team:teams(*)').in('match_id', matchIds) : Promise.resolve({ data: [] }),
+      matchIds.length > 0 ? supabase.from('goals').select('*, player:players(*), team:teams(*)').in('match_id', matchIds).eq('app', 'futbol') : Promise.resolve({ data: [] }),
+      teamIds.length > 0 ? supabase.from('players').select('*, team:teams(*)').in('team_id', teamIds).eq('app', 'futbol') : Promise.resolve({ data: [] }),
+      matchIds.length > 0 ? supabase.from('cards').select('*, player:players(*), team:teams(*)').in('match_id', matchIds).eq('app', 'futbol') : Promise.resolve({ data: [] }),
     ])
     setMatches(m.data ?? [])
     setTeams(t.data ?? [])
@@ -530,8 +534,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                     const standingsA = getStandings('A')
                     const standingsB = getStandings('B')
                     await supabase.from('matches').insert([
-                      { tournament_id: tournament.id, team_home_id: standingsA[0].id, team_away_id: standingsB[1].id, stage: 'semi', status: 'pending' },
-                      { tournament_id: tournament.id, team_home_id: standingsB[0].id, team_away_id: standingsA[1].id, stage: 'semi', status: 'pending' },
+                      { tournament_id: tournament.id, team_home_id: standingsA[0].id, team_away_id: standingsB[1].id, stage: 'semi', status: 'pending', app: 'futbol' },
+                      { tournament_id: tournament.id, team_home_id: standingsB[0].id, team_away_id: standingsA[1].id, stage: 'semi', status: 'pending', app: 'futbol' },
                     ])
                     loadData()
                   }}>
@@ -549,7 +553,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                       const ag = getMatchGoals(m.id, m.team_away_id)
                       return hg >= ag ? m.team_home_id : m.team_away_id
                     })
-                    await supabase.from('matches').insert({ tournament_id: tournament.id, team_home_id: winners[0], team_away_id: winners[1], stage: 'final', status: 'pending' })
+                    await supabase.from('matches').insert({ tournament_id: tournament.id, team_home_id: winners[0], team_away_id: winners[1], stage: 'final', status: 'pending', app: 'futbol' })
                     loadData()
                   }}>
                   Generar final →
