@@ -1,5 +1,5 @@
-import { useRef, useCallback, useEffect } from 'react';
-import { useMotionValue, animate, useAnimationFrame } from 'framer-motion';
+import { useRef, useCallback } from 'react';
+import { useMotionValue, animate } from 'framer-motion';
 
 interface UseTournamentRotationOptions {
   /** Cantidad de "muescas" de la ruleta (lo natural es usar el nro de nodos de la ronda externa). */

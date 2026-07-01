@@ -18,7 +18,7 @@ export const THIRD_PLACE_ROUND = 6;
  * local (round, indexInRound, totalNodesInRound) sin mirar otros nodos.
  */
 export function getNodeAngle(
-  round: number,
+  _round: number,
   indexInRound: number,
   totalNodesInRound: number
 ): number {

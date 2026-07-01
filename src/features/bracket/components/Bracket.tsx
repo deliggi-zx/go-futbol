@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import type { MatchNode } from '../types';
-import { layoutMatches, buildConnectors, THIRD_PLACE_ROUND } from '../utils/bracketMath';
+import { layoutMatches, buildConnectors } from '../utils/bracketMath';
 import { useTournamentRotation } from '../hooks/useTournamentRotation';
 import { MatchNodeView } from './MatchNode';
 import { MatchDetailModal } from './MatchDetailModal';
