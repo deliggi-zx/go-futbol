@@ -52,7 +52,7 @@ export function Bracket({ matches, size = 720, trophyUrl }: BracketProps) {
   const handleClose = useCallback(() => setSelectedId(null), []);
 
   return (
-    <div className="relative w-full overflow-hidden bg-slate-950 py-10">
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden bg-slate-950">
       <div
         ref={containerRef}
         className="relative mx-auto select-none"

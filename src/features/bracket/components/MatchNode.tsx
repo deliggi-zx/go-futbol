@@ -32,8 +32,8 @@ export function MatchNodeView({ match, x, y, wheelRotation, isSelected, onSelect
       style={{
         left: x,
         top: y,
-        width: 64,
-        height: 64,
+        width: 44,
+        height: 44,
         translateX: '-50%',
         translateY: '-50%',
       }}
@@ -48,15 +48,15 @@ export function MatchNodeView({ match, x, y, wheelRotation, isSelected, onSelect
             <img
               src={match.homeTeam.flagUrl}
               alt={match.homeTeam.name}
-              className={`h-4 w-6 rounded-sm object-cover ${
+              className={`h-3 w-[18px] rounded-sm object-cover ${
                 match.status === 'finished' && winner && winner !== match.homeTeam.id ? 'opacity-40' : 'opacity-100'
               }`}
             />
           ) : (
-            <span className="h-4 w-6 rounded-sm bg-slate-700" />
+            <span className="h-3 w-[18px] rounded-sm bg-slate-700" />
           )}
           {match.status !== 'scheduled' && (
-            <span className="text-[10px] font-semibold tabular-nums text-slate-200">
+            <span className="text-[8px] font-semibold tabular-nums text-slate-200">
               {match.homeScore}
             </span>
           )}
@@ -66,15 +66,15 @@ export function MatchNodeView({ match, x, y, wheelRotation, isSelected, onSelect
             <img
               src={match.awayTeam.flagUrl}
               alt={match.awayTeam.name}
-              className={`h-4 w-6 rounded-sm object-cover ${
+              className={`h-3 w-[18px] rounded-sm object-cover ${
                 match.status === 'finished' && winner && winner !== match.awayTeam.id ? 'opacity-40' : 'opacity-100'
               }`}
             />
           ) : (
-            <span className="h-4 w-6 rounded-sm bg-slate-700" />
+            <span className="h-3 w-[18px] rounded-sm bg-slate-700" />
           )}
           {match.status !== 'scheduled' && (
-            <span className="text-[10px] font-semibold tabular-nums text-slate-200">
+            <span className="text-[8px] font-semibold tabular-nums text-slate-200">
               {match.awayScore}
             </span>
           )}

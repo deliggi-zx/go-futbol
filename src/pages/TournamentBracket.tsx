@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Bracket } from '../features/bracket/components/Bracket'
 import type { MatchNode } from '../features/bracket/types'
@@ -7,11 +7,12 @@ import { mockMatches } from '../features/bracket/utils/mockData'
 
 export default function TournamentBracket() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [tournament, setTournament] = useState<any>(null)
   const [rawMatches, setRawMatches] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  const size = useMemo(() => Math.min(window.innerWidth - 32, 720), [])
+  const size = useMemo(() => Math.min(window.innerWidth, window.innerHeight) - 48, [])
 
   useEffect(() => {
     if (!id) return
@@ -116,7 +117,13 @@ export default function TournamentBracket() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#020617', color: '#fff' }}>
+    <div style={{ minHeight: '100svh', background: '#020617', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+      <button
+        onClick={() => navigate(-1)}
+        style={{ position: 'absolute', top: 16, left: 16, background: 'transparent', border: 'none', color: '#fbbf24', fontSize: 14, fontWeight: 700, cursor: 'pointer', padding: '4px 8px' }}
+      >
+        ← Volver
+      </button>
       {tournament && (
         <div style={{ padding: '24px 16px 8px', textAlign: 'center' }}>
           <h1 style={{ fontSize: 20, fontWeight: 800, color: '#C9A84C', margin: 0 }}>
