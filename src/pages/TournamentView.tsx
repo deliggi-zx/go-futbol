@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import MatchView from './MatchView'
 import AwardsView from './AwardsView'
@@ -22,6 +23,7 @@ const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2
 const borderGold = `1px solid ${gold}55`
 
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
+  const navigate = useNavigate()
   const [tab, setTab] = useState<'fixture' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
   const [matches, setMatches] = useState<any[]>([])
   const [teams, setTeams] = useState<any[]>([])
@@ -448,6 +450,13 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           <p style={{ color: '#a8d5b5', fontSize: 13, margin: '0 0 10px', fontFamily: 'Georgia, serif', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.periods_per_match} tiempos
           </p>
+
+          <button
+            onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
+            style={{ background: 'rgba(201,168,76,0.12)', border: `1px solid ${gold}55`, borderRadius: 8, padding: '7px 16px', color: gold, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif', letterSpacing: 1, marginBottom: 10, alignSelf: 'flex-start' }}
+          >
+            🏆 Ver Bracket
+          </button>
 
           {/* Botones admin */}
           {isAdmin && (
