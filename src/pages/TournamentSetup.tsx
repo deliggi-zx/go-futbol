@@ -225,17 +225,16 @@ function downloadTemplate() {
         }
       }
     } else if (fmt === 'knockout') {
-      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId).eq('app', 'futbol')
+      const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId).eq('app', 'futbol').order('created_at', { ascending: true })
       if (!savedTeams) return
-      const shuffled = [...savedTeams].sort(() => Math.random() - 0.5)
-      for (let i = 0; i < shuffled.length; i += 2) {
-        if (i + 1 < shuffled.length) {
+      for (let i = 0; i < savedTeams.length; i += 2) {
+        if (i + 1 < savedTeams.length) {
           await supabase.from('matches').insert({
             tournament_id: tournamentId,
-            team_home_id: shuffled[i].id,
-            team_away_id: shuffled[i + 1].id,
-            stage: shuffled.length === 2 ? 'final' : shuffled.length === 4 ? 'semi' : 'quarter',
-            status: 'pending', round: 1, app: 'futbol',
+            team_home_id: savedTeams[i].id,
+            team_away_id: savedTeams[i + 1].id,
+            stage: savedTeams.length === 2 ? 'final' : savedTeams.length === 4 ? 'semi' : 'quarter',
+            status: 'pending', round: 1, match_number: i / 2 + 1, app: 'futbol',
           })
         }
       }
