@@ -37,7 +37,7 @@ function PublicView() {
     // Buscar torneo activo de esa org — scorer_password excluido intencionalmente
     const { data } = await supabase
       .from('tournaments')
-      .select('id, name, date, periods_per_match, status, format, org_id, created_at, finished_at, winner_team_name')
+      .select('id, name, date, periods_per_match, status, format, org_id, has_third_place, created_at, finished_at, winner_team_name')
       .eq('org_id', org.id)
       .eq('app', 'futbol')
       .neq('status', 'finished')

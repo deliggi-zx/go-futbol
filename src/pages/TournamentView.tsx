@@ -255,6 +255,54 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     }
   }
 
+  async function generateNextKnockoutRound() {
+    const nonTPMatches = matches.filter((m: any) => m.round != null && !m.is_third_place)
+    if (nonTPMatches.length === 0) return
+    const currentRound = Math.max(...nonTPMatches.map((m: any) => m.round))
+    const currentRoundMatches = nonTPMatches
+      .filter((m: any) => m.round === currentRound)
+      .sort((a: any, b: any) => a.match_number - b.match_number)
+    if (!currentRoundMatches.every((m: any) => m.winner_id)) return
+
+    const nextRound = currentRound + 1
+    const nextMatchCount = currentRoundMatches.length / 2
+    const nextStage = nextMatchCount === 1 ? 'final' : nextMatchCount === 2 ? 'semi' : 'quarter'
+
+    const inserts = []
+    for (let i = 0; i < currentRoundMatches.length; i += 2) {
+      inserts.push({
+        tournament_id: tournament.id,
+        team_home_id: currentRoundMatches[i].winner_id,
+        team_away_id: currentRoundMatches[i + 1].winner_id,
+        stage: nextStage,
+        status: 'pending',
+        round: nextRound,
+        match_number: i / 2 + 1,
+        app: 'futbol',
+      })
+    }
+    await supabase.from('matches').insert(inserts)
+
+    // Generar 3er/4to puesto con los PERDEDORES de las semis, al avanzar a la final
+    if (nextStage === 'final' && tournament.has_third_place) {
+      const losers = currentRoundMatches.map((m: any) =>
+        m.winner_id === m.team_home_id ? m.team_away_id : m.team_home_id
+      )
+      await supabase.from('matches').insert({
+        tournament_id: tournament.id,
+        team_home_id: losers[0],
+        team_away_id: losers[1],
+        stage: 'third',
+        status: 'pending',
+        round: nextRound,
+        match_number: 1,
+        is_third_place: true,
+        app: 'futbol',
+      })
+    }
+    loadData()
+  }
+
   const groups = [...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort()
 
   const styles = {
@@ -568,6 +616,25 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                   Generar final →
                 </button>
               )}
+
+              {isAdmin && tournament.format === 'knockout' && (() => {
+                const nonTP = matches.filter((m: any) => m.round != null && !m.is_third_place)
+                if (nonTP.length === 0) return null
+                const currentRound = Math.max(...nonTP.map((m: any) => m.round))
+                const roundMatches = nonTP.filter((m: any) => m.round === currentRound)
+                const hasNextRound = nonTP.some((m: any) => m.round === currentRound + 1)
+                const isFinalDone = roundMatches.length === 1 && roundMatches[0].winner_id
+                const allHaveWinner = roundMatches.every((m: any) => m.winner_id)
+                if (hasNextRound || isFinalDone || !allHaveWinner) return null
+                return (
+                  <button
+                    style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 15, letterSpacing: 1 }}
+                    onClick={generateNextKnockoutRound}
+                  >
+                    Generar siguiente ronda →
+                  </button>
+                )
+              })()}
             </>
 
           /* ── POSICIONES ── */
