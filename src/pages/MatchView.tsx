@@ -84,6 +84,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [cards, setCards] = useState<any[]>([])
   const [showCardPanel, setShowCardPanel] = useState(false)
+  const [showPenaltyEntry, setShowPenaltyEntry] = useState(false)
+  const [penaltyHome, setPenaltyHome] = useState(0)
+  const [penaltyAway, setPenaltyAway] = useState(0)
   const soundOnRef = useRef(true)
 
   const [clock, setClock] = useState<any | null>(null)
@@ -245,7 +248,41 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function finishMatch() {
-    await supabase.from('matches').update({ status: 'finished', played_at: new Date().toISOString() }).eq('id', match.id)
+    const isKnockout = match.stage !== 'group'
+    if (isKnockout && homeGoals === awayGoals) {
+      setPenaltyHome(0)
+      setPenaltyAway(0)
+      setShowPenaltyEntry(true)
+      return
+    }
+    const winnerId = isKnockout
+      ? (homeGoals > awayGoals ? match.team_home_id : match.team_away_id)
+      : null
+    await supabase.from('matches').update({
+      status: 'finished',
+      played_at: new Date().toISOString(),
+      home_score: homeGoals,
+      away_score: awayGoals,
+      winner_id: winnerId,
+    }).eq('id', match.id)
+    onBack()
+  }
+
+  async function finishMatchWithPenalties() {
+    if (penaltyHome === penaltyAway) {
+      alert('Los penales no pueden terminar empatados — tiene que haber un ganador.')
+      return
+    }
+    const winnerId = penaltyHome > penaltyAway ? match.team_home_id : match.team_away_id
+    await supabase.from('matches').update({
+      status: 'finished',
+      played_at: new Date().toISOString(),
+      home_score: homeGoals,
+      away_score: awayGoals,
+      penalty_home_score: penaltyHome,
+      penalty_away_score: penaltyAway,
+      winner_id: winnerId,
+    }).eq('id', match.id)
     onBack()
   }
 
@@ -569,8 +606,47 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         </div>
       </div>
 
+      {/* Panel definición por penales */}
+      {isAdmin && match.status !== 'finished' && showPenaltyEntry && (
+        <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>DEFINICIÓN POR PENALES</p>
+          <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 16 }}>
+            Empate en tiempo regular ({homeGoals}-{awayGoals}) · Cargá el resultado de la tanda de penales
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 16 }}>
+            <div style={{ textAlign: 'center' as const }}>
+              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 6 }}>{match.team_home?.name}</p>
+              <input
+                type="number" min={0} value={penaltyHome}
+                onChange={e => setPenaltyHome(Math.max(0, Number(e.target.value)))}
+                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 22, width: 64, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+              />
+            </div>
+            <span style={{ color: '#666', fontSize: 18 }}>-</span>
+            <div style={{ textAlign: 'center' as const }}>
+              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 6 }}>{match.team_away?.name}</p>
+              <input
+                type="number" min={0} value={penaltyAway}
+                onChange={e => setPenaltyAway(Math.max(0, Number(e.target.value)))}
+                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 22, width: 64, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowPenaltyEntry(false)}
+              style={{ flex: 1, background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Cancelar
+            </button>
+            <button onClick={finishMatchWithPenalties}
+              style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Confirmar penales
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Panel asignación */}
-      {isAdmin && match.status !== 'finished' && (
+      {isAdmin && match.status !== 'finished' && !showPenaltyEntry && (
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
