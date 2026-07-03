@@ -213,7 +213,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       return
     }
     setSaving(true)
-    await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, period: period, app: 'futbol' })
+    const { error } = await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker: period, app: 'futbol' })
+    if (error) { alert(`Error al registrar gol: ${error.message}`); setSaving(false); return }
     await supabase.from('matches').update({ status: 'live', period_current: period }).eq('id', match.id)
     await loadData()
     setSaving(false)
