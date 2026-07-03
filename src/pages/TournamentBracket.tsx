@@ -36,7 +36,7 @@ export default function TournamentBracket() {
           away_team:teams!team_away_id(id, name, logo_url)
         `)
         .eq('tournament_id', tournamentId)
-        .in('status', ['scheduled', 'live', 'finished'])
+        .in('status', ['pending', 'scheduled', 'live', 'finished'])
         .order('round', { ascending: true })
         .order('match_number', { ascending: true }),
     ])
@@ -63,7 +63,7 @@ export default function TournamentBracket() {
         m.round < maxRound
           ? `R${m.round + 1}-M${Math.floor((m.match_number - 1) / 2) + 1}`
           : null,
-      status: m.status as MatchNode['status'],
+      status: (m.status === 'pending' ? 'scheduled' : m.status) as MatchNode['status'],
       date: m.played_at ?? new Date().toISOString(),
       homeTeam: m.home_team
         ? { id: m.home_team.id, name: m.home_team.name, flagUrl: m.home_team.logo_url ?? '' }
@@ -83,7 +83,7 @@ export default function TournamentBracket() {
         round: 6,
         indexInRound: 0,
         nextMatchId: null,
-        status: thirdPlace.status as MatchNode['status'],
+        status: (thirdPlace.status === 'pending' ? 'scheduled' : thirdPlace.status) as MatchNode['status'],
         date: thirdPlace.played_at ?? new Date().toISOString(),
         homeTeam: thirdPlace.home_team
           ? { id: thirdPlace.home_team.id, name: thirdPlace.home_team.name, flagUrl: thirdPlace.home_team.logo_url ?? '' }
