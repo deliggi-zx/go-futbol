@@ -22,9 +22,41 @@ const darkBg = '#062B14'
 const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)'
 const borderGold = `1px solid ${gold}55`
 
+const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const WEEKDAYS_LONG = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+function dateKey(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatTimeOnly(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function formatShortDateTime(iso: string): string {
+  const d = new Date(iso)
+  return `${WEEKDAYS_SHORT[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1} · ${formatTimeOnly(iso)}hs`
+}
+
+function formatLongDate(iso: string): string {
+  const d = new Date(iso)
+  return `${WEEKDAYS_LONG[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}`
+}
+
+function timeOnDate(iso: string | null, dateStr: string): string {
+  if (!iso || !dateStr) return ''
+  if (dateKey(iso) !== dateStr) return ''
+  return formatTimeOnly(iso)
+}
+
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'fixture' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
+  const [tab, setTab] = useState<'fixture' | 'schedule' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleTimes, setScheduleTimes] = useState<Record<string, string>>({})
+  const [savingSchedule, setSavingSchedule] = useState(false)
   const [matches, setMatches] = useState<any[]>([])
   const [teams, setTeams] = useState<any[]>([])
   const [goals, setGoals] = useState<any[]>([])
@@ -303,7 +335,41 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     loadData()
   }
 
+  async function saveSchedule() {
+    if (!scheduleDate) { alert('Elegí una fecha primero.'); return }
+    const updates = matches
+      .map(m => {
+        const time = scheduleTimes[m.id] ?? timeOnDate(m.scheduled_at, scheduleDate)
+        if (!time) return null
+        return { id: m.id, scheduled_at: new Date(`${scheduleDate}T${time}:00`).toISOString() }
+      })
+      .filter((u): u is { id: string; scheduled_at: string } => u !== null)
+    if (updates.length === 0) { alert('Cargá al menos un horario antes de guardar.'); return }
+    setSavingSchedule(true)
+    await Promise.all(updates.map(u => supabase.from('matches').update({ scheduled_at: u.scheduled_at }).eq('id', u.id)))
+    setScheduleTimes({})
+    await loadData()
+    setSavingSchedule(false)
+  }
+
+  async function clearSchedule(matchId: string) {
+    await supabase.from('matches').update({ scheduled_at: null }).eq('id', matchId)
+    loadData()
+  }
+
   const groups = [...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort()
+
+  const scheduledMatches = matches.filter(m => m.scheduled_at).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+  const unscheduledMatches = matches.filter(m => !m.scheduled_at)
+  const scheduleDateGroups: any[][] = []
+  for (const m of scheduledMatches) {
+    const lastGroup = scheduleDateGroups[scheduleDateGroups.length - 1]
+    if (lastGroup && dateKey(lastGroup[0].scheduled_at) === dateKey(m.scheduled_at)) {
+      lastGroup.push(m)
+    } else {
+      scheduleDateGroups.push([m])
+    }
+  }
 
   const styles = {
     container: {
@@ -452,6 +518,11 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? `🔴 T.${match.chukker_current}` : 'Pendiente'}
             </span>
           </div>
+          {match.scheduled_at && (
+            <p style={{ textAlign: 'center' as const, fontSize: 11, color: '#a8d5b5', margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>
+              {formatShortDateTime(match.scheduled_at)}
+            </p>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={32} />
@@ -552,7 +623,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
 
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'rgba(30,5,15,0.95)', borderBottom: `1px solid ${gold}44`, overflowX: 'auto' as const }}>
-        {(['fixture', 'standings', 'stats', 'teams', 'awards'] as const).map(t => (
+        {(['fixture', 'schedule', 'standings', 'stats', 'teams', 'awards'] as const).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             flex: 1, padding: '13px 6px', textAlign: 'center' as const, cursor: 'pointer',
             fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1,
@@ -563,7 +634,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             whiteSpace: 'nowrap' as const,
             transition: 'color 0.2s',
           }}>
-            {t === 'fixture' ? 'Fixture' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Estadísticas' : t === 'teams' ? 'Equipos' : 'Premios'}
+            {t === 'fixture' ? 'Fixture' : t === 'schedule' ? 'Cronograma' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Estadísticas' : t === 'teams' ? 'Equipos' : 'Premios'}
           </button>
         ))}
       </div>
@@ -646,6 +717,99 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                   </button>
                 )
               })()}
+            </>
+
+          /* ── CRONOGRAMA ── */
+          ) : tab === 'schedule' ? (
+            <>
+              {isAdmin && (
+                <div style={{ borderRadius: 14, marginBottom: 20, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                  {goldBar}
+                  <div style={{ background: cardBg, padding: 16 }}>
+                    <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>CARGAR HORARIOS</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, justifyContent: 'center' }}>
+                      <span style={{ color: gold, fontSize: 13, fontFamily: 'Georgia, serif' }}>Fecha:</span>
+                      <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
+                        style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }} />
+                    </div>
+                    {scheduleDate && (
+                      <>
+                        <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>
+                          Cargá la hora de los partidos que se juegan este día · dejá vacío el resto
+                        </p>
+                        {matches.map(m => (
+                          <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderBottom: `1px solid ${gold}22` }}>
+                            <span style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Georgia, serif' }}>
+                              {m.team_home?.name ?? 'Por definir'} vs {m.team_away?.name ?? 'Por definir'}
+                            </span>
+                            <input type="time"
+                              value={scheduleTimes[m.id] ?? timeOnDate(m.scheduled_at, scheduleDate)}
+                              onChange={e => setScheduleTimes(prev => ({ ...prev, [m.id]: e.target.value }))}
+                              style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '6px 8px', color: gold, fontSize: 13, fontFamily: 'Georgia, serif', width: 96 }} />
+                            {m.scheduled_at && (
+                              <button onClick={() => clearSchedule(m.id)} title="Quitar horario"
+                                style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button onClick={saveSchedule} disabled={savingSchedule}
+                          style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '12px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 14, letterSpacing: 1, opacity: savingSchedule ? 0.6 : 1 }}>
+                          {savingSchedule ? 'Guardando...' : 'Guardar horarios'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {goldBar}
+                </div>
+              )}
+
+              <p style={styles.sectionLabel}>PROGRAMACIÓN</p>
+              {scheduleDateGroups.length === 0 && unscheduledMatches.length === 0 && (
+                <p style={{ color: '#a8d5b5', textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Todavía no hay partidos cargados.</p>
+              )}
+              {scheduleDateGroups.map(group => (
+                <div key={dateKey(group[0].scheduled_at)} style={{ marginBottom: 20 }}>
+                  <p style={{ color: gold, fontWeight: 700, fontSize: 14, marginBottom: 8, fontFamily: 'Georgia, serif' }}>
+                    {formatLongDate(group[0].scheduled_at)}
+                  </p>
+                  <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                    {goldBar}
+                    <div style={{ background: cardBg }}>
+                      {group.map(m => (
+                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                          <span style={{ color: gold, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', minWidth: 46 }}>
+                            {formatTimeOnly(m.scheduled_at)}
+                          </span>
+                          <span style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Georgia, serif' }}>
+                            {m.team_home?.name ?? 'Por definir'} vs {m.team_away?.name ?? 'Por definir'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {goldBar}
+                  </div>
+                </div>
+              ))}
+              {unscheduledMatches.length > 0 && (
+                <div>
+                  <p style={{ color: '#a8d5b5', fontWeight: 700, fontSize: 14, marginBottom: 8, fontFamily: 'Georgia, serif' }}>Sin programar</p>
+                  <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)`, opacity: 0.7 }}>
+                    {goldBar}
+                    <div style={{ background: cardBg }}>
+                      {unscheduledMatches.map(m => (
+                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                          <span style={{ flex: 1, color: '#fff', fontSize: 13, fontFamily: 'Georgia, serif' }}>
+                            {m.team_home?.name ?? 'Por definir'} vs {m.team_away?.name ?? 'Por definir'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {goldBar}
+                  </div>
+                </div>
+              )}
             </>
 
           /* ── POSICIONES ── */
