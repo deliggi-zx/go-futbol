@@ -55,6 +55,7 @@ function timeOnDate(iso: string | null, dateStr: string): string {
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
   const navigate = useNavigate()
   const [tab, setTab] = useState<'fixture' | 'schedule' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
+  const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set())
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTimes, setScheduleTimes] = useState<Record<string, string>>({})
   const [savingSchedule, setSavingSchedule] = useState(false)
@@ -358,6 +359,14 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     loadData()
   }
 
+  function toggleRound(round: number) {
+    setExpandedRounds(prev => {
+      const next = new Set(prev)
+      next.has(round) ? next.delete(round) : next.add(round)
+      return next
+    })
+  }
+
   const groups = [...new Set(teams.filter(t => t.group_name).map(t => t.group_name))].sort()
 
   const scheduledMatches = matches.filter(m => m.scheduled_at).sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
@@ -650,14 +659,51 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                 </div>
               ))}
 
-              {knockoutMatches.length > 0 && (
-                <>
-                  <p style={styles.sectionLabel}>ELIMINACIÓN DIRECTA</p>
-                  {knockoutMatches.map(match => (
-                    <MatchCard key={match.id} match={match} />
-                  ))}
-                </>
-              )}
+              {knockoutMatches.length > 0 && (() => {
+                const thirdPlaceMatch = knockoutMatches.find(m => m.is_third_place)
+                const bracketMatches = knockoutMatches.filter(m => !m.is_third_place && m.round != null)
+                const flatMatches = knockoutMatches.filter(m => !m.is_third_place && m.round == null)
+                const rounds = [...new Set(bracketMatches.map(m => m.round))].sort((a, b) => b - a)
+                const maxRound = rounds.length > 0 ? rounds[0] : null
+
+                return (
+                  <>
+                    {flatMatches.length > 0 && (
+                      <>
+                        <p style={styles.sectionLabel}>ELIMINACIÓN DIRECTA</p>
+                        {flatMatches.map(match => (
+                          <MatchCard key={match.id} match={match} />
+                        ))}
+                      </>
+                    )}
+
+                    {rounds.map(round => {
+                      const roundMatches = bracketMatches.filter(m => m.round === round).sort((a, b) => a.match_number - b.match_number)
+                      const isLatest = round === maxRound
+                      const isComplete = roundMatches.every(m => m.winner_id)
+                      const isOpen = isLatest || expandedRounds.has(round)
+                      const label = knockoutRoundLabel(roundMatches[0], knockoutTeamCount).toUpperCase()
+                      return (
+                        <div key={round}>
+                          <p
+                            style={{ ...styles.sectionLabel, cursor: isLatest ? 'default' : 'pointer', userSelect: 'none' as const }}
+                            onClick={isLatest ? undefined : () => toggleRound(round)}
+                          >
+                            {label}
+                            {!isLatest && isComplete && <span style={{ color: '#4ade80', marginLeft: 6 }}>✓</span>}
+                            {!isLatest && <span style={{ marginLeft: 6, fontSize: 10 }}>{isOpen ? '▲' : '▼'}</span>}
+                          </p>
+                          {isOpen && roundMatches.map(match => (
+                            <MatchCard key={match.id} match={match} />
+                          ))}
+                        </div>
+                      )
+                    })}
+
+                    {thirdPlaceMatch && <MatchCard match={thirdPlaceMatch} />}
+                  </>
+                )
+              })()}
 
               {isAdmin && knockoutMatches.length === 0 && groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished') && (
                 <button
