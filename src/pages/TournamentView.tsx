@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { knockoutRoundLabel } from '../lib/knockout'
 import MatchView from './MatchView'
 import AwardsView from './AwardsView'
 import FixtureManager from './FixtureManager'
@@ -483,16 +484,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     }
   }
 
-  function knockoutRoundLabel(match: any): string {
-    if (match.is_third_place) return '3er Puesto'
-    const bracketRounds = knockoutMatches.filter(m => !m.is_third_place && m.round != null).map(m => m.round)
-    const maxRound = bracketRounds.length > 0 ? Math.max(...bracketRounds) : match.round
-    const roundsFromFinal = maxRound - match.round
-    const labels: Record<number, string> = {
-      0: 'Final', 1: 'Semifinal', 2: 'Cuartos de Final', 3: 'Octavos de Final', 4: 'Dieciseisavos de Final',
-    }
-    return labels[roundsFromFinal] ?? `Ronda ${match.round}`
-  }
+  const round1MatchCount = knockoutMatches.filter(m => !m.is_third_place && m.round === 1).length
+  const knockoutTeamCount = tournament.team_count ?? (round1MatchCount > 0 ? round1MatchCount * 2 : null)
 
   function MatchCard({ match, group }: { match: any; group?: string }) {
     const clickable = isAdmin || isScorerAdmin || match.status !== 'pending'
@@ -512,7 +505,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         <div style={{ background: cardBg, padding: '12px 14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <span style={stageBadge(match.stage)}>
-              {match.stage === 'group' ? `Grupo ${group}` : knockoutRoundLabel(match)}
+              {match.stage === 'group' ? `Grupo ${group}` : knockoutRoundLabel(match, knockoutTeamCount)}
             </span>
             <span style={statusBadge(match.status)}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? `🔴 T.${match.chukker_current}` : 'Pendiente'}
@@ -648,7 +641,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           /* ── FIXTURE ── */
           tab === 'fixture' ? (
             <>
-              {groups.map(group => (
+              {tournament.format !== 'knockout' && groups.map(group => (
                 <div key={group}>
                   <p style={styles.sectionLabel}>GRUPO {group}</p>
                   {groupMatches.filter(m => m.group_name === group).map(match => (
@@ -815,7 +808,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           /* ── POSICIONES ── */
           ) : tab === 'standings' ? (
             <>
-              {groups.map(group => {
+              {tournament.format !== 'knockout' && groups.map(group => {
                 const standing = getStandings(group)
                 return (
                   <div key={group} style={{ marginBottom: 24 }}>

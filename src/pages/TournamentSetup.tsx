@@ -121,7 +121,7 @@ function downloadTemplate() {
   if (!teamsMap[teamName]) {
     teamsMap[teamName] = {
       name: teamName,
-      group: String(row.grupo ?? 'A').trim().toUpperCase(),
+      group: format === 'knockout' ? null : String(row.grupo ?? 'A').trim().toUpperCase(),
       logo: null,
       players: []
     }

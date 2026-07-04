@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { knockoutRoundLabel } from '../lib/knockout'
 import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
@@ -416,7 +417,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         </button>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 2, textTransform: 'uppercase' as const }}>
-            {match.stage === 'group' ? `Grupo ${match.group_name}` : match.stage === 'semi' ? 'Semifinal' : 'Final'}
+            {match.stage === 'group' ? `Grupo ${match.group_name}` : knockoutRoundLabel(match, tournament.team_count)}
           </span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
