@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
 import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import { QRCodeSVG } from 'qrcode.react'
+import { Flag } from 'lucide-react'
 import PlayerCard from './PlayerCard'
 
 const COUNTDOWN_SECONDS = 9
@@ -99,6 +100,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const bellFiredRef = useRef(false)
   const whistleRef = useRef<HTMLAudioElement | null>(null)
   const crowdRef = useRef<HTMLAudioElement | null>(null)
+  const applauseRef = useRef<HTMLAudioElement | null>(null)
+  const channelRef = useRef<any>(null)
 
   const periodSeconds = (tournament.chukker_duration_minutes ?? 45) * 60
   const totalPeriods = tournament.periods_per_match ?? 2
@@ -131,7 +134,22 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     c.volume = 0.7
     c.preload = 'auto'
     crowdRef.current = c
+    const a = new Audio('/applause.wav')
+    a.volume = 0.7
+    a.preload = 'auto'
+    applauseRef.current = a
   }, [])
+
+  function playTriggeredSound(sound: 'whistle' | 'applause' | 'crowd') {
+    if (!soundOnRef.current) return
+    const ref = sound === 'whistle' ? whistleRef : sound === 'applause' ? applauseRef : crowdRef
+    if (!ref.current) return
+    try { ref.current.currentTime = 0; ref.current.play().catch(() => {}) } catch (e) {}
+  }
+
+  function triggerSound(sound: 'whistle' | 'applause' | 'crowd') {
+    channelRef.current?.send({ type: 'broadcast', event: 'play_sound', payload: { sound } })
+  }
 
   function ringBell() {
     if (!soundOnRef.current) return
@@ -160,8 +178,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     loadClock()
     loadMatchRow()
     const channel = supabase
-      .channel(`match-${match.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => { ringBell(); loadData() })
+      .channel(`match-${match.id}`, { config: { broadcast: { self: true } } })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_votes', filter: `match_id=eq.${match.id}` }, () => loadData())
@@ -169,7 +187,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
+      .on('broadcast', { event: 'play_sound' }, ({ payload }) => playTriggeredSound(payload.sound))
       .subscribe()
+    channelRef.current = channel
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
 
@@ -517,6 +537,19 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
+            {isAdmin && (
+              <>
+                <button onClick={() => triggerSound('applause')} title="Aplausos" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+                  👏
+                </button>
+                <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <Flag size={15} />
+                </button>
+                <button onClick={() => triggerSound('crowd')} title="Grito de gol" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
+                  🎉
+                </button>
+              </>
+            )}
             <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
             </button>
