@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
 import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import { QRCodeSVG } from 'qrcode.react'
-import { Flag } from 'lucide-react'
+import { Hand, PartyPopper } from 'lucide-react'
 import PlayerCard from './PlayerCard'
 
 const COUNTDOWN_SECONDS = 9
@@ -539,14 +539,16 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             </span>
             {isAdmin && (
               <>
-                <button onClick={() => triggerSound('applause')} title="Aplausos" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
-                  👏
+                <button onClick={() => triggerSound('applause')} title="Aplausos (sonido pendiente de subir)" style={{ position: 'relative' as const, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <Hand size={15} />
+                  <span style={{ position: 'absolute' as const, top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#fb923c', border: '1px solid rgba(0,0,0,0.6)' }} />
                 </button>
-                <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                  <Flag size={15} />
+                <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <img src="/icons/silbato.png" alt="Silbato" style={{ width: 16, height: 16, objectFit: 'contain' as const }} />
                 </button>
-                <button onClick={() => triggerSound('crowd')} title="Grito de gol" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
-                  🎉
+                <button onClick={() => triggerSound('crowd')} title="Grito de gol (sonido pendiente de subir)" style={{ position: 'relative' as const, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <PartyPopper size={15} />
+                  <span style={{ position: 'absolute' as const, top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#fb923c', border: '1px solid rgba(0,0,0,0.6)' }} />
                 </button>
               </>
             )}
