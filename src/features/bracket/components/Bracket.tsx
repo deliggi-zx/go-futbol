@@ -14,13 +14,19 @@ interface BracketProps {
 
 const BASE_RADIUS_RATIO = 0.46; // proporción del tamaño del lienzo
 const ROUND_SPACING_RATIO = 0.082;
-const R1_TICK_COUNT = 16;
+const R1_TICK_COUNT_FALLBACK = 16;
 
 export function Bracket({ matches, size = 720, trophyUrl }: BracketProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // La rueda "clickea" una vez por partido de Ronda 1 — antes asumía siempre 16 (32 equipos).
+  const tickSegments = useMemo(() => {
+    const round1Count = matches.filter((m) => m.round === 1 && !m.isThirdPlace).length;
+    return round1Count > 0 ? round1Count : R1_TICK_COUNT_FALLBACK;
+  }, [matches]);
+
   const { rotation, containerRef, stopMomentum, handlers } = useTournamentRotation({
-    tickSegments: R1_TICK_COUNT,
+    tickSegments,
   });
 
   // --- Cálculos pesados: memoizados, NO se recalculan en cada frame de rotación ---

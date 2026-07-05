@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import type { MatchNode } from '../types';
-import { ROUND_NAMES } from '../utils/bracketMath';
+import { Avatar } from '../../../components/Avatar';
 
 interface MatchDetailModalProps {
   match: MatchNode | null;
@@ -54,7 +54,7 @@ export function MatchDetailModal({ match, onClose }: MatchDetailModalProps) {
             </button>
 
             <p className="text-xs uppercase tracking-widest text-amber-400/80 font-semibold">
-              {ROUND_NAMES[match.round]}
+              {match.roundLabel}
             </p>
 
             {match.status === 'live' && (
@@ -110,9 +110,9 @@ function TeamRow({
     <div className={`flex items-center justify-between rounded-xl border border-white/5 bg-white/5 px-4 py-3 ${dimmed ? 'opacity-50' : ''}`}>
       <div className="flex items-center gap-3">
         {team ? (
-          <img src={team.flagUrl} alt={team.name} className="h-6 w-9 rounded object-cover" />
+          <Avatar url={team.logoUrl || null} name={team.name} size={40} bordered={false} />
         ) : (
-          <span className="h-6 w-9 rounded bg-slate-700" />
+          <span className="h-10 w-10 rounded-full bg-slate-700" />
         )}
         <span className={`font-medium ${isWinner ? 'text-amber-300' : 'text-slate-100'}`}>
           {team?.name ?? 'Por definir'}

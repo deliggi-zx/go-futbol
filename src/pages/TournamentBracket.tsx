@@ -1,9 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { knockoutRoundLabel } from '../lib/knockout'
 import { Bracket } from '../features/bracket/components/Bracket'
-import type { MatchNode } from '../features/bracket/types'
+import type { MatchNode, MatchStatus } from '../features/bracket/types'
 import { mockMatches } from '../features/bracket/utils/mockData'
+
+const THIRD_PLACE_ID = 'R-THIRD-M1'
 
 export default function TournamentBracket() {
   const { id } = useParams<{ id: string }>()
@@ -46,59 +49,118 @@ export default function TournamentBracket() {
     setLoading(false)
   }
 
+  /**
+   * Arma el arbol COMPLETO de cruces a partir de tournament.team_count —
+   * incluyendo rondas que todavia no se generaron en la base — y despues
+   * lo "pinta" con los datos reales que existan. Los nodos sin fila real
+   * quedan como placeholder ("Por definir"), salvo que se pueda inferir el
+   * equipo por especulacion (ver mas abajo).
+   */
   const mappedMatches = useMemo((): MatchNode[] => {
-    const eliminationMatches = rawMatches.filter(
-      (m) => !m.is_third_place && m.round != null
-    )
+    const teamCount = tournament?.team_count ?? 0
+    const totalRounds = teamCount >= 2 ? Math.ceil(Math.log2(teamCount)) : 0
+    if (!tournament || totalRounds === 0) return mockMatches
 
-    if (eliminationMatches.length === 0) return mockMatches
+    const nodes = new Map<string, MatchNode>()
 
-    const maxRound = Math.max(...eliminationMatches.map((m) => m.round))
+    // 1. Esqueleto vacio de todas las rondas reales.
+    for (let round = 1; round <= totalRounds; round++) {
+      const count = Math.max(1, Math.round(teamCount / 2 ** round))
+      for (let i = 0; i < count; i++) {
+        const nodeId = `R${round}-M${i + 1}`
+        nodes.set(nodeId, {
+          id: nodeId,
+          round,
+          indexInRound: i,
+          nextMatchId: round < totalRounds ? `R${round + 1}-M${Math.floor(i / 2) + 1}` : null,
+          isThirdPlace: false,
+          roundLabel: knockoutRoundLabel({ round, is_third_place: false }, teamCount),
+          status: 'scheduled',
+          date: new Date().toISOString(),
+          homeTeam: null,
+          awayTeam: null,
+        })
+      }
+    }
 
-    const nodes: MatchNode[] = eliminationMatches.map((m) => ({
-      id: `R${m.round}-M${m.match_number}`,
-      round: m.round,
-      indexInRound: m.match_number - 1,
-      nextMatchId:
-        m.round < maxRound
-          ? `R${m.round + 1}-M${Math.floor((m.match_number - 1) / 2) + 1}`
-          : null,
-      status: (m.status === 'pending' ? 'scheduled' : m.status) as MatchNode['status'],
-      date: m.played_at ?? new Date().toISOString(),
-      homeTeam: m.home_team
-        ? { id: m.home_team.id, name: m.home_team.name, flagUrl: m.home_team.logo_url ?? '' }
-        : null,
-      awayTeam: m.away_team
-        ? { id: m.away_team.id, name: m.away_team.name, flagUrl: m.away_team.logo_url ?? '' }
-        : null,
-      homeScore: m.home_score ?? undefined,
-      awayScore: m.away_score ?? undefined,
-      winnerId: m.winner_id ?? null,
-    }))
-
-    const thirdPlace = rawMatches.find((m) => m.is_third_place)
-    if (thirdPlace) {
-      nodes.push({
-        id: 'R6-M1',
-        round: 6,
+    // 3er puesto: mismo "anillo" que semifinales, fuera del arbol principal.
+    if (tournament.has_third_place && totalRounds >= 2) {
+      nodes.set(THIRD_PLACE_ID, {
+        id: THIRD_PLACE_ID,
+        round: totalRounds,
         indexInRound: 0,
         nextMatchId: null,
-        status: (thirdPlace.status === 'pending' ? 'scheduled' : thirdPlace.status) as MatchNode['status'],
-        date: thirdPlace.played_at ?? new Date().toISOString(),
-        homeTeam: thirdPlace.home_team
-          ? { id: thirdPlace.home_team.id, name: thirdPlace.home_team.name, flagUrl: thirdPlace.home_team.logo_url ?? '' }
-          : null,
-        awayTeam: thirdPlace.away_team
-          ? { id: thirdPlace.away_team.id, name: thirdPlace.away_team.name, flagUrl: thirdPlace.away_team.logo_url ?? '' }
-          : null,
-        homeScore: thirdPlace.home_score ?? undefined,
-        awayScore: thirdPlace.away_score ?? undefined,
-        winnerId: thirdPlace.winner_id ?? null,
+        isThirdPlace: true,
+        roundLabel: '3er Puesto',
+        status: 'scheduled',
+        date: new Date().toISOString(),
+        homeTeam: null,
+        awayTeam: null,
       })
     }
 
-    return nodes
-  }, [rawMatches])
+    // 2. Pintar con datos reales donde existan.
+    function paint(node: MatchNode, real: any) {
+      node.status = (real.status === 'pending' ? 'scheduled' : real.status) as MatchStatus
+      node.date = real.played_at ?? node.date
+      node.homeTeam = real.home_team
+        ? { id: real.home_team.id, name: real.home_team.name, logoUrl: real.home_team.logo_url ?? '' }
+        : null
+      node.awayTeam = real.away_team
+        ? { id: real.away_team.id, name: real.away_team.name, logoUrl: real.away_team.logo_url ?? '' }
+        : null
+      node.homeScore = real.home_score ?? undefined
+      node.awayScore = real.away_score ?? undefined
+      node.winnerId = real.winner_id ?? null
+    }
+
+    for (const real of rawMatches) {
+      if (real.is_third_place) continue
+      if (real.round == null || real.match_number == null) continue
+      const node = nodes.get(`R${real.round}-M${real.match_number}`)
+      if (node) paint(node, real)
+    }
+
+    const thirdPlaceReal = rawMatches.find((m) => m.is_third_place)
+    const thirdNode = nodes.get(THIRD_PLACE_ID)
+    if (thirdPlaceReal && thirdNode) paint(thirdNode, thirdPlaceReal)
+
+    // 3. Especulacion: empujar ganadores hacia rondas futuras aunque todavia
+    // no exista la fila real (para poder ver "quien se cruzaria con quien").
+    // Solo llena un costado si no vino ya pintado por un dato real (arriba).
+    for (let round = 1; round < totalRounds; round++) {
+      const roundNodes = [...nodes.values()]
+        .filter((n) => n.round === round && !n.isThirdPlace)
+        .sort((a, b) => a.indexInRound - b.indexInRound)
+
+      for (const m of roundNodes) {
+        if (!m.winnerId || !m.nextMatchId) continue
+        const parent = nodes.get(m.nextMatchId)
+        if (!parent) continue
+        const winnerTeam = m.winnerId === m.homeTeam?.id ? m.homeTeam : m.winnerId === m.awayTeam?.id ? m.awayTeam : null
+        if (!winnerTeam) continue
+        const slot: 'homeTeam' | 'awayTeam' = m.indexInRound % 2 === 0 ? 'homeTeam' : 'awayTeam'
+        if (!parent[slot]) parent[slot] = winnerTeam
+      }
+    }
+
+    // Perdedores de semifinal -> 3er puesto (misma logica, especulativa).
+    if (thirdNode) {
+      const semiRound = totalRounds - 1
+      const semis = [...nodes.values()]
+        .filter((n) => n.round === semiRound && !n.isThirdPlace)
+        .sort((a, b) => a.indexInRound - b.indexInRound)
+
+      semis.forEach((m, idx) => {
+        if (!m.winnerId || !m.homeTeam || !m.awayTeam) return
+        const loser = m.winnerId === m.homeTeam.id ? m.awayTeam : m.homeTeam
+        const slot: 'homeTeam' | 'awayTeam' = idx === 0 ? 'homeTeam' : 'awayTeam'
+        if (!thirdNode[slot]) thirdNode[slot] = loser
+      })
+    }
+
+    return [...nodes.values()]
+  }, [rawMatches, tournament])
 
   if (loading) {
     return (

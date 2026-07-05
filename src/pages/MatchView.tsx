@@ -4,6 +4,7 @@ import { knockoutRoundLabel } from '../lib/knockout'
 import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import { QRCodeSVG } from 'qrcode.react'
 import { Hand, PartyPopper } from 'lucide-react'
+import { Avatar } from '../components/Avatar'
 import PlayerCard from './PlayerCard'
 
 const COUNTDOWN_SECONDS = 9
@@ -13,15 +14,6 @@ const orbitronLink = document.createElement('link')
 orbitronLink.rel = 'stylesheet'
 orbitronLink.href = 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap'
 document.head.appendChild(orbitronLink)
-
-function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }} />
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #0D4F28 0%, #062B14 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.4)' }}>
-      {name.charAt(0).toUpperCase()}
-    </div>
-  )
-}
 
 function DigitalScore({ score, onTap, isAdmin, pendingCount = 0, overtime = false }:
   { score: number; onTap?: () => void; isAdmin?: boolean; pendingCount?: number; overtime?: boolean }) {

@@ -1,16 +1,5 @@
 import type { MatchNode, PositionedMatch } from '../types';
 
-export const ROUND_NAMES: Record<number, string> = {
-  1: '16avos',
-  2: 'Octavos',
-  3: 'Cuartos',
-  4: 'Semifinal',
-  5: 'Final',
-  6: '3er Puesto',
-};
-
-export const THIRD_PLACE_ROUND = 6;
-
 /**
  * Ángulo (en grados) de un nodo de Ronda 1 mediante distribución equitativa
  * en 360°, arrancando en la parte superior (-90°) y avanzando en sentido horario.
@@ -38,15 +27,15 @@ function shortestAngleDiff(a1: number, a2: number): number {
  * Calcula los ángulos de TODAS las rondas, propagando desde la Ronda 1 hacia
  * adentro. Cada padre (Ronda R+1) toma la bisectriz angular exacta de sus dos
  * hijos (Ronda R), garantizando que las líneas conectoras nunca queden
- * desalineadas. El partido de 3er puesto (round 6) se excluye de este árbol
- * y recibe un ángulo fijo aparte (ver computeThirdPlaceAngle).
+ * desalineadas. El partido de 3er puesto se excluye de este árbol y recibe
+ * un ángulo fijo aparte (ver computeThirdPlaceAngle).
  */
 export function computeAngles(matches: MatchNode[]): Map<string, number> {
   const angles = new Map<string, number>();
   const byRound = new Map<number, MatchNode[]>();
 
   for (const m of matches) {
-    if (m.round === THIRD_PLACE_ROUND) continue;
+    if (m.isThirdPlace) continue;
     const arr = byRound.get(m.round) ?? [];
     arr.push(m);
     byRound.set(m.round, arr);
@@ -57,7 +46,8 @@ export function computeAngles(matches: MatchNode[]): Map<string, number> {
     angles.set(m.id, getNodeAngle(1, m.indexInRound, round1.length));
   });
 
-  const maxRound = Math.max(...Array.from(byRound.keys()));
+  const rounds = Array.from(byRound.keys());
+  const maxRound = rounds.length > 0 ? Math.max(...rounds) : 1;
   for (let round = 2; round <= maxRound; round++) {
     const nodes = (byRound.get(round) ?? []).slice().sort((a, b) => a.indexInRound - b.indexInRound);
     for (const parent of nodes) {
@@ -88,10 +78,20 @@ export interface RadiusConfig {
   roundSpacing: number;
 }
 
-export function getRadius(round: number, { baseRadius, roundSpacing }: RadiusConfig): number {
-  if (round === THIRD_PLACE_ROUND) {
-    // Vive a la altura de semifinales, desplazado angularmente (ver computeThirdPlaceAngle)
-    return baseRadius - (4 - 1) * roundSpacing;
+/**
+ * Radio de una ronda: Ronda 1 en el borde exterior, cada ronda siguiente un
+ * anillo más adentro. El 3er puesto vive a la altura de semifinales (un
+ * anillo antes de la final), por eso necesita el maxRound real del árbol —
+ * ya no asume que semifinales sea "la ronda 4" como antes.
+ */
+export function getRadius(
+  round: number,
+  isThirdPlace: boolean,
+  maxRound: number,
+  { baseRadius, roundSpacing }: RadiusConfig
+): number {
+  if (isThirdPlace) {
+    return baseRadius - Math.max(0, maxRound - 2) * roundSpacing;
   }
   return baseRadius - (round - 1) * roundSpacing;
 }
@@ -122,15 +122,14 @@ export function layoutMatches(
   const center = size / 2;
   const angles = computeAngles(matches);
 
-  const finalMatch = matches.find((m) => m.round === 5);
+  const bracketRounds = matches.filter((m) => !m.isThirdPlace).map((m) => m.round);
+  const maxRound = bracketRounds.length > 0 ? Math.max(...bracketRounds) : 1;
+  const finalMatch = matches.find((m) => m.round === maxRound && !m.isThirdPlace);
   const finalAngle = finalMatch ? angles.get(finalMatch.id) ?? -90 : -90;
 
   return matches.map((m) => {
-    const angleDeg =
-      m.round === THIRD_PLACE_ROUND
-        ? computeThirdPlaceAngle(finalAngle)
-        : angles.get(m.id) ?? 0;
-    const radius = getRadius(m.round, radiusConfig);
+    const angleDeg = m.isThirdPlace ? computeThirdPlaceAngle(finalAngle) : angles.get(m.id) ?? 0;
+    const radius = getRadius(m.round, m.isThirdPlace, maxRound, radiusConfig);
     const { x, y } = polarToCartesian(center, center, radius, angleDeg);
     return { ...m, angleDeg, x, y };
   });

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { Avatar } from '../components/Avatar'
 import * as XLSX from 'xlsx'
 
 type Props = { onCreated: (t: any) => void; orgId?: string }
@@ -277,15 +278,6 @@ function downloadTemplate() {
     }),
   }
 
-  function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-    if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover' }} />
-    return (
-      <div style={{ width: size, height: size, borderRadius: '50%', background: '#1A6B35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
-        {name.charAt(0).toUpperCase()}
-      </div>
-    )
-  }
-
   return (
     <div style={styles.container}>
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
@@ -405,7 +397,7 @@ function downloadTemplate() {
               </div>
 
               <div style={{ ...styles.row, marginBottom: 8 }}>
-                <Avatar url={team.logo ? URL.createObjectURL(team.logo) : null} name={team.name || '?'} size={48} />
+                <Avatar url={team.logo ? URL.createObjectURL(team.logo) : null} name={team.name || "?"} size={48} bordered={false} />
                 <div style={{ flex: 1 }}>
                   <input style={{ ...styles.input, marginBottom: 8 }} placeholder="Nombre del equipo" value={team.name} onChange={e => updateTeam(i, 'name', e.target.value)} />
                 </div>
@@ -417,7 +409,7 @@ function downloadTemplate() {
               <p style={{ color: '#a8d5b5', fontSize: 12, marginTop: 12, marginBottom: 8 }}>Jugadores:</p>
               {team.players.map((player, j) => (
                 <div key={j} style={{ ...styles.row, marginBottom: 8, alignItems: 'flex-start' }}>
-                  <Avatar url={player.photo ? URL.createObjectURL(player.photo) : null} name={player.name || '?'} size={36} />
+                  <Avatar url={player.photo ? URL.createObjectURL(player.photo) : null} name={player.name || '?'} size={36} bordered={false} />
                   <div style={{ flex: 1 }}>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder={`Jugador ${j + 1}`} value={player.name} onChange={e => updatePlayer(i, j, 'name', e.target.value)} />
                     <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>

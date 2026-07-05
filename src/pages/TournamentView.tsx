@@ -3,20 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
 import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
+import { Avatar } from '../components/Avatar'
 import MatchView from './MatchView'
 import AwardsView from './AwardsView'
 import FixtureManager from './FixtureManager'
 
 type Props = { tournament: any; onReset: () => void; initialMatchId?: string | null }
-
-function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.3)' }} />
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: 'radial-gradient(circle, #0D4F28 0%, #062B14 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0, border: '2px solid #C9A84C', boxShadow: '0 0 8px rgba(201,168,76,0.3)' }}>
-      {name.charAt(0).toUpperCase()}
-    </div>
-  )
-}
 
 const gold = '#C9A84C'
 const goldLight = '#E8C96A'

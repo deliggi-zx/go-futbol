@@ -1,5 +1,6 @@
 import { motion, MotionValue, useTransform } from 'framer-motion';
 import type { MatchNode } from '../types';
+import { Avatar } from '../../../components/Avatar';
 
 interface MatchNodeProps {
   match: MatchNode;
@@ -45,15 +46,15 @@ export function MatchNodeView({ match, x, y, wheelRotation, isSelected, onSelect
         <span className={`absolute -top-1 -right-1 h-2 w-2 rounded-full ${statusDotClass[match.status]}`} />
         <div className="flex items-center gap-1">
           {match.homeTeam ? (
-            <img
-              src={match.homeTeam.flagUrl}
-              alt={match.homeTeam.name}
-              className={`h-3 w-[18px] rounded-sm object-cover ${
+            <div
+              className={
                 match.status === 'finished' && winner && winner !== match.homeTeam.id ? 'opacity-40' : 'opacity-100'
-              }`}
-            />
+              }
+            >
+              <Avatar url={match.homeTeam.logoUrl || null} name={match.homeTeam.name} size={14} bordered={false} />
+            </div>
           ) : (
-            <span className="h-3 w-[18px] rounded-sm bg-slate-700" />
+            <span className="h-[14px] w-[14px] rounded-full bg-slate-700" />
           )}
           {match.status !== 'scheduled' && (
             <span className="text-[8px] font-semibold tabular-nums text-slate-200">
@@ -63,15 +64,15 @@ export function MatchNodeView({ match, x, y, wheelRotation, isSelected, onSelect
         </div>
         <div className="flex items-center gap-1">
           {match.awayTeam ? (
-            <img
-              src={match.awayTeam.flagUrl}
-              alt={match.awayTeam.name}
-              className={`h-3 w-[18px] rounded-sm object-cover ${
+            <div
+              className={
                 match.status === 'finished' && winner && winner !== match.awayTeam.id ? 'opacity-40' : 'opacity-100'
-              }`}
-            />
+              }
+            >
+              <Avatar url={match.awayTeam.logoUrl || null} name={match.awayTeam.name} size={14} bordered={false} />
+            </div>
           ) : (
-            <span className="h-3 w-[18px] rounded-sm bg-slate-700" />
+            <span className="h-[14px] w-[14px] rounded-full bg-slate-700" />
           )}
           {match.status !== 'scheduled' && (
             <span className="text-[8px] font-semibold tabular-nums text-slate-200">
