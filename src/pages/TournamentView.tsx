@@ -497,17 +497,16 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const knockoutTeamCount = tournament.team_count ?? (round1MatchCount > 0 ? round1MatchCount * 2 : null)
 
   function MatchCard({ match, group }: { match: any; group?: string }) {
-    const clickable = isAdmin || isScorerAdmin || match.status !== 'pending'
     return (
       <div
-        onClick={() => clickable ? setSelectedMatch(match) : null}
+        onClick={() => setSelectedMatch(match)}
         style={{
           borderRadius: 14, marginBottom: 10, overflow: 'hidden',
           boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)`,
-          cursor: clickable ? 'pointer' : 'default',
+          cursor: 'pointer',
           transition: 'transform 0.15s, box-shadow 0.15s',
         }}
-        onMouseEnter={e => { if (clickable) { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px ${gold}88, 0 8px 24px rgba(0,0,0,0.6)` } }}
+        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px ${gold}88, 0 8px 24px rgba(0,0,0,0.6)` }}
         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLDivElement).style.boxShadow = `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}
       >
         {goldBar}
