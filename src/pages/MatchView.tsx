@@ -89,9 +89,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [cards, setCards] = useState<any[]>([])
   const [showCardPanel, setShowCardPanel] = useState(false)
-  const [showPenaltyEntry, setShowPenaltyEntry] = useState(false)
-  const [homeSequence, setHomeSequence] = useState<boolean[]>([])
-  const [awaySequence, setAwaySequence] = useState<boolean[]>([])
+  const [liveMatchFields, setLiveMatchFields] = useState<any>(match)
+  const [shotBusy, setShotBusy] = useState(false)
   const soundOnRef = useRef(true)
 
   const [clock, setClock] = useState<any | null>(null)
@@ -107,6 +106,15 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   function getBaseSeconds(periodNum: number): number {
     return (periodNum - 1) * periodSeconds
   }
+
+  const displayMatch = { ...match, ...liveMatchFields }
+
+  function currentSequence(team: 'home' | 'away'): boolean[] {
+    return (team === 'home' ? displayMatch.penalty_home_sequence : displayMatch.penalty_away_sequence) ?? []
+  }
+
+  const shootoutActive = displayMatch.status !== 'finished'
+    && (displayMatch.penalty_home_sequence != null || displayMatch.penalty_away_sequence != null)
 
   const deviceId = (() => {
     let id = localStorage.getItem('gofutbol_device_id')
@@ -141,9 +149,16 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (data) setPeriod(data.chukker)
   }
 
+  async function loadMatchRow() {
+    const { data, error } = await supabase.from('matches').select('*').eq('id', match.id).single()
+    if (error || !data) return
+    setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+  }
+
   useEffect(() => {
     loadData()
     loadClock()
+    loadMatchRow()
     const channel = supabase
       .channel(`match-${match.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => { ringBell(); loadData() })
@@ -153,6 +168,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
@@ -259,9 +275,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function finishMatch() {
     const isKnockout = match.stage !== 'group'
     if (isKnockout && homeGoals === awayGoals) {
-      setHomeSequence([])
-      setAwaySequence([])
-      setShowPenaltyEntry(true)
+      const { data, error } = await supabase.from('matches')
+        .update({ penalty_home_sequence: [], penalty_away_sequence: [] })
+        .eq('id', match.id).select().single()
+      if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
       return
     }
     const winnerId = isKnockout
@@ -277,9 +294,42 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     onBack()
   }
 
+  async function recordShot(team: 'home' | 'away', scored: boolean) {
+    if (shotBusy) return
+    const seq = currentSequence(team)
+    if (seq.length >= 5) return
+    setShotBusy(true)
+    const next = [...seq, scored]
+    const column = team === 'home' ? 'penalty_home_sequence' : 'penalty_away_sequence'
+    const { data, error } = await supabase.from('matches').update({ [column]: next }).eq('id', match.id).select().single()
+    if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+    setShotBusy(false)
+  }
+
+  async function undoShot(team: 'home' | 'away') {
+    if (shotBusy) return
+    const seq = currentSequence(team)
+    if (seq.length === 0) return
+    setShotBusy(true)
+    const next = seq.slice(0, -1)
+    const column = team === 'home' ? 'penalty_home_sequence' : 'penalty_away_sequence'
+    const { data, error } = await supabase.from('matches').update({ [column]: next }).eq('id', match.id).select().single()
+    if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+    setShotBusy(false)
+  }
+
+  async function cancelPenalties() {
+    const { data, error } = await supabase.from('matches')
+      .update({ penalty_home_sequence: null, penalty_away_sequence: null })
+      .eq('id', match.id).select().single()
+    if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+  }
+
   async function finishMatchWithPenalties() {
-    const penaltyHome = homeSequence.filter(Boolean).length
-    const penaltyAway = awaySequence.filter(Boolean).length
+    const homeSeq = currentSequence('home')
+    const awaySeq = currentSequence('away')
+    const penaltyHome = homeSeq.filter(Boolean).length
+    const penaltyAway = awaySeq.filter(Boolean).length
     if (penaltyHome === penaltyAway) {
       alert('Los penales no pueden terminar empatados — tiene que haber un ganador.')
       return
@@ -292,8 +342,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       away_score: awayGoals,
       penalty_home_score: penaltyHome,
       penalty_away_score: penaltyAway,
-      penalty_home_sequence: homeSequence,
-      penalty_away_sequence: awaySequence,
+      penalty_home_sequence: homeSeq,
+      penalty_away_sequence: awaySeq,
       winner_id: winnerId,
     }).eq('id', match.id)
     onBack()
@@ -550,7 +600,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             {/* Equipo local */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={60} />
-              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(match, match.team_home_id) }}>{match.team_home?.name}</p>
+              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(displayMatch, match.team_home_id) }}>{match.team_home?.name}</p>
               <DigitalScore
                 score={homeGoals}
                 overtime={clockIsOvertime}
@@ -570,9 +620,9 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 lineHeight: 1,
                 opacity: 0.8,
               }}>:</span>
-              {penaltyScoreLabel(match) && (
+              {penaltyScoreLabel(displayMatch) && (
                 <span style={{ fontSize: 11, color: gold, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                  {penaltyScoreLabel(match)}
+                  {penaltyScoreLabel(displayMatch)}
                 </span>
               )}
             </div>
@@ -580,7 +630,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             {/* Equipo visitante */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={60} />
-              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(match, match.team_away_id) }}>{match.team_away?.name}</p>
+              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(displayMatch, match.team_away_id) }}>{match.team_away?.name}</p>
               <DigitalScore
                 score={awayGoals}
                 overtime={clockIsOvertime}
@@ -656,76 +706,83 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         </div>
       </div>
 
-      {/* Panel definición por penales */}
-      {isAdmin && match.status !== 'finished' && showPenaltyEntry && (
+      {/* Panel definición por penales — lucecitas visibles para todos, botones solo admin */}
+      {shootoutActive && (
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>DEFINICIÓN POR PENALES</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 16 }}>
-            Empate en tiempo regular ({homeGoals}-{awayGoals}) · Cargá cada penal a medida que se patea
+            Empate en tiempo regular ({homeGoals}-{awayGoals}){isAdmin ? ' · Cargá cada penal a medida que se patea' : ''}
           </p>
 
-          {[
-            { name: match.team_home?.name, sequence: homeSequence, setSequence: setHomeSequence },
-            { name: match.team_away?.name, sequence: awaySequence, setSequence: setAwaySequence },
-          ].map((team, i) => (
-            <div key={i} style={{ marginBottom: 16 }}>
-              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 8, textAlign: 'center' as const }}>{team.name}</p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
-                {Array.from({ length: 5 }).map((_, slot) => {
-                  const taken = slot < team.sequence.length
-                  const scored = taken ? team.sequence[slot] : null
-                  return (
-                    <div key={slot} style={{
-                      width: 22, height: 22, borderRadius: '50%',
-                      background: taken ? (scored ? '#22c55e' : '#ef4444') : 'transparent',
-                      border: `2px solid ${taken ? (scored ? '#22c55e' : '#ef4444') : gold + '55'}`,
-                      boxShadow: taken ? `0 0 8px ${scored ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'}` : 'none',
-                    }} />
-                  )
-                })}
+          {([
+            { key: 'home' as const, name: match.team_home?.name },
+            { key: 'away' as const, name: match.team_away?.name },
+          ]).map(team => {
+            const sequence = currentSequence(team.key)
+            return (
+              <div key={team.key} style={{ marginBottom: 16 }}>
+                <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 8, textAlign: 'center' as const }}>{team.name}</p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                  {Array.from({ length: 5 }).map((_, slot) => {
+                    const taken = slot < sequence.length
+                    const scored = taken ? sequence[slot] : null
+                    return (
+                      <div key={slot} style={{
+                        width: 22, height: 22, borderRadius: '50%',
+                        background: taken ? (scored ? '#22c55e' : '#ef4444') : 'transparent',
+                        border: `2px solid ${taken ? (scored ? '#22c55e' : '#ef4444') : gold + '55'}`,
+                        boxShadow: taken ? `0 0 8px ${scored ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'}` : 'none',
+                      }} />
+                    )
+                  })}
+                </div>
+                {isAdmin && (
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                    <button
+                      disabled={sequence.length >= 5 || shotBusy}
+                      onClick={() => recordShot(team.key, true)}
+                      style={{ background: 'rgba(22,101,52,0.5)', border: '1px solid #4ade8066', borderRadius: 8, padding: '6px 14px', cursor: sequence.length >= 5 || shotBusy ? 'default' : 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: sequence.length >= 5 || shotBusy ? 0.4 : 1 }}>
+                      ✓ Convertido
+                    </button>
+                    <button
+                      disabled={sequence.length >= 5 || shotBusy}
+                      onClick={() => recordShot(team.key, false)}
+                      style={{ background: 'rgba(127,29,29,0.5)', border: '1px solid #ef444466', borderRadius: 8, padding: '6px 14px', cursor: sequence.length >= 5 || shotBusy ? 'default' : 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: sequence.length >= 5 || shotBusy ? 0.4 : 1 }}>
+                      ✗ Errado
+                    </button>
+                    <button
+                      disabled={sequence.length === 0 || shotBusy}
+                      onClick={() => undoShot(team.key)}
+                      style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 8, padding: '6px 10px', cursor: sequence.length === 0 || shotBusy ? 'default' : 'pointer', color: `${gold}99`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: sequence.length === 0 || shotBusy ? 0.4 : 1 }}>
+                      ↩ Deshacer
+                    </button>
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                <button
-                  disabled={team.sequence.length >= 5}
-                  onClick={() => team.setSequence(prev => prev.length < 5 ? [...prev, true] : prev)}
-                  style={{ background: 'rgba(22,101,52,0.5)', border: '1px solid #4ade8066', borderRadius: 8, padding: '6px 14px', cursor: team.sequence.length >= 5 ? 'default' : 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length >= 5 ? 0.4 : 1 }}>
-                  ✓ Convertido
-                </button>
-                <button
-                  disabled={team.sequence.length >= 5}
-                  onClick={() => team.setSequence(prev => prev.length < 5 ? [...prev, false] : prev)}
-                  style={{ background: 'rgba(127,29,29,0.5)', border: '1px solid #ef444466', borderRadius: 8, padding: '6px 14px', cursor: team.sequence.length >= 5 ? 'default' : 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length >= 5 ? 0.4 : 1 }}>
-                  ✗ Errado
-                </button>
-                <button
-                  disabled={team.sequence.length === 0}
-                  onClick={() => team.setSequence(prev => prev.slice(0, -1))}
-                  style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 8, padding: '6px 10px', cursor: team.sequence.length === 0 ? 'default' : 'pointer', color: `${gold}99`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length === 0 ? 0.4 : 1 }}>
-                  ↩ Deshacer
-                </button>
-              </div>
+            )
+          })}
+
+          <p style={{ color: gold, fontSize: 18, fontWeight: 900, textAlign: 'center' as const, fontFamily: 'Georgia, serif', marginBottom: isAdmin ? 16 : 0 }}>
+            {currentSequence('home').filter(Boolean).length} - {currentSequence('away').filter(Boolean).length}
+          </p>
+
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={cancelPenalties}
+                style={{ flex: 1, background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                Cancelar
+              </button>
+              <button onClick={finishMatchWithPenalties}
+                style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                Confirmar penales
+              </button>
             </div>
-          ))}
-
-          <p style={{ color: gold, fontSize: 18, fontWeight: 900, textAlign: 'center' as const, fontFamily: 'Georgia, serif', marginBottom: 16 }}>
-            {homeSequence.filter(Boolean).length} - {awaySequence.filter(Boolean).length}
-          </p>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setShowPenaltyEntry(false)}
-              style={{ flex: 1, background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-              Cancelar
-            </button>
-            <button onClick={finishMatchWithPenalties}
-              style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-              Confirmar penales
-            </button>
-          </div>
+          )}
         </div>
       )}
 
       {/* Panel asignación */}
-      {isAdmin && match.status !== 'finished' && !showPenaltyEntry && (
+      {isAdmin && match.status !== 'finished' && !shootoutActive && (
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>ASIGNAR GOL</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>Tocá el marcador para sumar un gol · Tocá un jugador para asignarlo</p>
