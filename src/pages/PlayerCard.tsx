@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { Avatar } from '../components/Avatar'
 
 type Player = {
   id: string
@@ -35,14 +36,6 @@ function getTeamColors(teamName: string): string[] {
   return TEAM_COLORS[Math.abs(hash) % TEAM_COLORS.length]
 }
 
-function Avatar({ url, name, size = 32 }: { url?: string | null; name: string; size?: number }) {
-  if (url) return <img src={url} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-  return (
-    <div style={{ width: size, height: size, borderRadius: '50%', background: '#1A6B35', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.4, fontWeight: 700, color: '#C9A84C', flexShrink: 0 }}>
-      {name.charAt(0).toUpperCase()}
-    </div>
-  )
-}
 
 export default function PlayerCard({ players, onVote, onChangeVote, voteCount, votedPlayerId }: Props) {
   const [index, setIndex] = useState(0)
@@ -216,7 +209,7 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
           {/* Equipo */}
           {player.team && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <Avatar url={player.team.logo_url} name={player.team.name} size={18} />
+              <Avatar url={player.team.logo_url} name={player.team.name} size={18} bordered={false} />
               <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase' as const }}>
                 {player.team.name}
               </span>
