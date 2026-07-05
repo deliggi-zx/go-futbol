@@ -4,6 +4,9 @@ import { knockoutRoundLabel } from '../lib/knockout'
 import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
+const COUNTDOWN_SECONDS = 9
+const COUNTDOWN_FADE_SECONDS = 0.5
+
 const orbitronLink = document.createElement('link')
 orbitronLink.rel = 'stylesheet'
 orbitronLink.href = 'https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap'
@@ -192,6 +195,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const currentPeriodLimit = clock ? getBaseSeconds(clock.chukker) + periodSeconds : periodSeconds
   const clockIsOvertime = clockElapsed >= currentPeriodLimit
 
+  const isKickoffCountdown = !!clock && clock.chukker === 1 && clock.status === 'running' && clockElapsed < COUNTDOWN_FADE_SECONDS
+  const countdownNumber = isKickoffCountdown ? Math.max(0, COUNTDOWN_SECONDS - Math.floor(COUNTDOWN_SECONDS + clockElapsed)) : null
+  const countdownEnded = isKickoffCountdown && clockElapsed >= 0
+
   function formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60)
     const s = Math.floor(seconds % 60)
@@ -331,15 +338,16 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
     const now = new Date().toISOString()
     bellFiredRef.current = false
     const baseSeconds = getBaseSeconds(periodNum)
+    const initialSeconds = periodNum === 1 ? baseSeconds - COUNTDOWN_SECONDS : baseSeconds
     if (clock) {
       const { data, error } = await supabase.from('match_clock')
-        .update({ chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now })
+        .update({ chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: initialSeconds, updated_at: now })
         .eq('match_id', match.id).select().single()
       if (error) { alert(`Error: ${error.message}`); return }
       clockRef.current = data; setClock(data); setPeriod(periodNum)
     } else {
       const { data, error } = await supabase.from('match_clock')
-        .insert({ match_id: match.id, chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: baseSeconds, updated_at: now, app: 'futbol' })
+        .insert({ match_id: match.id, chukker: periodNum, status: 'running', started_at: now, elapsed_seconds: initialSeconds, updated_at: now, app: 'futbol' })
         .select().single()
       if (error) { alert(`Error: ${error.message}`); return }
       clockRef.current = data; setClock(data); setPeriod(periodNum)
@@ -409,6 +417,37 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       background: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/grass.jpg') center center / cover`,
       color: '#fff',
     }}>
+
+      {/* Cuenta regresiva de arranque — overlay en tiempo real para todos */}
+      {isKickoffCountdown && (
+        <div style={{
+          position: 'fixed' as const, inset: 0, zIndex: 999,
+          background: 'rgba(6,43,20,0.97)',
+          display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center',
+          transition: 'opacity 0.4s ease, transform 0.4s ease',
+          opacity: countdownEnded ? 0 : 1,
+          transform: countdownEnded ? 'scale(1.1)' : 'scale(1)',
+          pointerEvents: countdownEnded ? 'none' as const : 'auto' as const,
+        }}>
+          <p style={{ color: gold, fontSize: 16, fontWeight: 700, letterSpacing: 4, fontFamily: 'Georgia, serif', marginBottom: 16, textTransform: 'uppercase' as const, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
+            Arranca el partido
+          </p>
+          <span
+            key={countdownNumber}
+            style={{
+              fontFamily: "'Orbitron', monospace",
+              fontSize: 'clamp(120px, 40vh, 320px)',
+              fontWeight: 900,
+              color: gold,
+              textShadow: `0 0 40px rgba(201,168,76,0.6), 0 0 80px rgba(201,168,76,0.3)`,
+              lineHeight: 1,
+              animation: 'countdownPop 0.5s ease-out',
+            }}
+          >
+            {countdownNumber}
+          </span>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', padding: '12px 16px', borderBottom: `1px solid ${gold}44` }}>
