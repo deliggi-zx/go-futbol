@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
+import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import { QRCodeSVG } from 'qrcode.react'
 import PlayerCard from './PlayerCard'
 
@@ -89,8 +90,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [cards, setCards] = useState<any[]>([])
   const [showCardPanel, setShowCardPanel] = useState(false)
   const [showPenaltyEntry, setShowPenaltyEntry] = useState(false)
-  const [penaltyHome, setPenaltyHome] = useState(0)
-  const [penaltyAway, setPenaltyAway] = useState(0)
+  const [homeSequence, setHomeSequence] = useState<boolean[]>([])
+  const [awaySequence, setAwaySequence] = useState<boolean[]>([])
   const soundOnRef = useRef(true)
 
   const [clock, setClock] = useState<any | null>(null)
@@ -258,8 +259,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   async function finishMatch() {
     const isKnockout = match.stage !== 'group'
     if (isKnockout && homeGoals === awayGoals) {
-      setPenaltyHome(0)
-      setPenaltyAway(0)
+      setHomeSequence([])
+      setAwaySequence([])
       setShowPenaltyEntry(true)
       return
     }
@@ -277,6 +278,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }
 
   async function finishMatchWithPenalties() {
+    const penaltyHome = homeSequence.filter(Boolean).length
+    const penaltyAway = awaySequence.filter(Boolean).length
     if (penaltyHome === penaltyAway) {
       alert('Los penales no pueden terminar empatados — tiene que haber un ganador.')
       return
@@ -289,6 +292,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       away_score: awayGoals,
       penalty_home_score: penaltyHome,
       penalty_away_score: penaltyAway,
+      penalty_home_sequence: homeSequence,
+      penalty_away_sequence: awaySequence,
       winner_id: winnerId,
     }).eq('id', match.id)
     onBack()
@@ -545,7 +550,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             {/* Equipo local */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={60} />
-              <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{match.team_home?.name}</p>
+              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(match, match.team_home_id) }}>{match.team_home?.name}</p>
               <DigitalScore
                 score={homeGoals}
                 overtime={clockIsOvertime}
@@ -565,12 +570,17 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 lineHeight: 1,
                 opacity: 0.8,
               }}>:</span>
+              {penaltyScoreLabel(match) && (
+                <span style={{ fontSize: 11, color: gold, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                  {penaltyScoreLabel(match)}
+                </span>
+              )}
             </div>
 
             {/* Equipo visitante */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
               <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={60} />
-              <p style={{ fontSize: 15, fontWeight: 800, color: '#fff', margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>{match.team_away?.name}</p>
+              <p style={{ fontSize: 15, fontWeight: 800, margin: 0, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.8)', ...teamResultStyle(match, match.team_away_id) }}>{match.team_away?.name}</p>
               <DigitalScore
                 score={awayGoals}
                 overtime={clockIsOvertime}
@@ -651,27 +661,56 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>DEFINICIÓN POR PENALES</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 16 }}>
-            Empate en tiempo regular ({homeGoals}-{awayGoals}) · Cargá el resultado de la tanda de penales
+            Empate en tiempo regular ({homeGoals}-{awayGoals}) · Cargá cada penal a medida que se patea
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, marginBottom: 16 }}>
-            <div style={{ textAlign: 'center' as const }}>
-              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 6 }}>{match.team_home?.name}</p>
-              <input
-                type="number" min={0} value={penaltyHome}
-                onChange={e => setPenaltyHome(Math.max(0, Number(e.target.value)))}
-                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 22, width: 64, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              />
+
+          {[
+            { name: match.team_home?.name, sequence: homeSequence, setSequence: setHomeSequence },
+            { name: match.team_away?.name, sequence: awaySequence, setSequence: setAwaySequence },
+          ].map((team, i) => (
+            <div key={i} style={{ marginBottom: 16 }}>
+              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 8, textAlign: 'center' as const }}>{team.name}</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
+                {Array.from({ length: 5 }).map((_, slot) => {
+                  const taken = slot < team.sequence.length
+                  const scored = taken ? team.sequence[slot] : null
+                  return (
+                    <div key={slot} style={{
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: taken ? (scored ? '#22c55e' : '#ef4444') : 'transparent',
+                      border: `2px solid ${taken ? (scored ? '#22c55e' : '#ef4444') : gold + '55'}`,
+                      boxShadow: taken ? `0 0 8px ${scored ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)'}` : 'none',
+                    }} />
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                <button
+                  disabled={team.sequence.length >= 5}
+                  onClick={() => team.setSequence(prev => prev.length < 5 ? [...prev, true] : prev)}
+                  style={{ background: 'rgba(22,101,52,0.5)', border: '1px solid #4ade8066', borderRadius: 8, padding: '6px 14px', cursor: team.sequence.length >= 5 ? 'default' : 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length >= 5 ? 0.4 : 1 }}>
+                  ✓ Convertido
+                </button>
+                <button
+                  disabled={team.sequence.length >= 5}
+                  onClick={() => team.setSequence(prev => prev.length < 5 ? [...prev, false] : prev)}
+                  style={{ background: 'rgba(127,29,29,0.5)', border: '1px solid #ef444466', borderRadius: 8, padding: '6px 14px', cursor: team.sequence.length >= 5 ? 'default' : 'pointer', color: '#ef4444', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length >= 5 ? 0.4 : 1 }}>
+                  ✗ Errado
+                </button>
+                <button
+                  disabled={team.sequence.length === 0}
+                  onClick={() => team.setSequence(prev => prev.slice(0, -1))}
+                  style={{ background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 8, padding: '6px 10px', cursor: team.sequence.length === 0 ? 'default' : 'pointer', color: `${gold}99`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', opacity: team.sequence.length === 0 ? 0.4 : 1 }}>
+                  ↩ Deshacer
+                </button>
+              </div>
             </div>
-            <span style={{ color: '#666', fontSize: 18 }}>-</span>
-            <div style={{ textAlign: 'center' as const }}>
-              <p style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', marginBottom: 6 }}>{match.team_away?.name}</p>
-              <input
-                type="number" min={0} value={penaltyAway}
-                onChange={e => setPenaltyAway(Math.max(0, Number(e.target.value)))}
-                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 22, width: 64, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              />
-            </div>
-          </div>
+          ))}
+
+          <p style={{ color: gold, fontSize: 18, fontWeight: 900, textAlign: 'center' as const, fontFamily: 'Georgia, serif', marginBottom: 16 }}>
+            {homeSequence.filter(Boolean).length} - {awaySequence.filter(Boolean).length}
+          </p>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setShowPenaltyEntry(false)}
               style={{ flex: 1, background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>

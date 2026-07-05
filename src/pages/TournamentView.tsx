@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
+import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import MatchView from './MatchView'
 import AwardsView from './AwardsView'
 import FixtureManager from './FixtureManager'
@@ -527,7 +528,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
               <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={32} />
-              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', color: '#fff' }}>{match.team_home?.name ?? 'Por definir'}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', ...teamResultStyle(match, match.team_home_id) }}>{match.team_home?.name ?? 'Por definir'}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 26, fontWeight: 900, color: gold, minWidth: 32, textAlign: 'center' as const, fontFamily: 'Georgia, serif', textShadow: `0 0 12px rgba(201,168,76,0.4)` }}>
@@ -537,9 +538,14 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
               <span style={{ fontSize: 26, fontWeight: 900, color: gold, minWidth: 32, textAlign: 'center' as const, fontFamily: 'Georgia, serif', textShadow: `0 0 12px rgba(201,168,76,0.4)` }}>
                 {match.status !== 'pending' ? getMatchGoals(match.id, match.team_away_id) : '–'}
               </span>
+              {penaltyScoreLabel(match) && (
+                <span style={{ fontSize: 10, color: gold, fontFamily: 'Georgia, serif', marginLeft: 2, opacity: 0.85 }}>
+                  {penaltyScoreLabel(match)}
+                </span>
+              )}
             </div>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', color: '#fff', textAlign: 'right' as const }}>{match.team_away?.name ?? 'Por definir'}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', textAlign: 'right' as const, ...teamResultStyle(match, match.team_away_id) }}>{match.team_away?.name ?? 'Por definir'}</span>
               <Avatar url={match.team_away?.logo_url} name={match.team_away?.name ?? '?'} size={32} />
             </div>
           </div>
