@@ -130,11 +130,11 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     w.volume = 1.0
     w.preload = 'auto'
     whistleRef.current = w
-    const c = new Audio('/crowd.wav')
+    const c = new Audio('/Goal.mp3')
     c.volume = 0.7
     c.preload = 'auto'
     crowdRef.current = c
-    const a = new Audio('/applause.wav')
+    const a = new Audio('/Aplausos.wav')
     a.volume = 0.7
     a.preload = 'auto'
     applauseRef.current = a
@@ -155,7 +155,6 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (!soundOnRef.current) return
     try {
       if (whistleRef.current) { whistleRef.current.currentTime = 0; whistleRef.current.play().catch(() => {}) }
-      if (crowdRef.current) { crowdRef.current.currentTime = 0; crowdRef.current.play().catch(() => {}) }
     } catch (e) {}
   }
 
@@ -539,16 +538,14 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             </span>
             {isAdmin && (
               <>
-                <button onClick={() => triggerSound('applause')} title="Aplausos (sonido pendiente de subir)" style={{ position: 'relative' as const, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => triggerSound('applause')} title="Aplausos" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <Hand size={15} />
-                  <span style={{ position: 'absolute' as const, top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#fb923c', border: '1px solid rgba(0,0,0,0.6)' }} />
                 </button>
                 <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <img src="/icons/silbato.png" alt="Silbato" style={{ width: 16, height: 16, objectFit: 'contain' as const }} />
                 </button>
-                <button onClick={() => triggerSound('crowd')} title="Grito de gol (sonido pendiente de subir)" style={{ position: 'relative' as const, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => triggerSound('crowd')} title="Grito de gol" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <PartyPopper size={15} />
-                  <span style={{ position: 'absolute' as const, top: -3, right: -3, width: 7, height: 7, borderRadius: '50%', background: '#fb923c', border: '1px solid rgba(0,0,0,0.6)' }} />
                 </button>
               </>
             )}
