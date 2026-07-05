@@ -23,3 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.gstack/
+
+.vercel
+
+# Cache local del CLI de Supabase (version, proyecto linkeado, etc.) — cambia en cada
+# comando `supabase ...` y es estado de maquina, no configuracion de proyecto.
+supabase/.temp/
