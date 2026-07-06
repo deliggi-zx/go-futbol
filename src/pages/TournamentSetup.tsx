@@ -20,6 +20,9 @@ const FORMATS = [
 ]
 
 const TEAM_COUNTS = [4, 6, 8, 10, 12, 16, 24, 32, 48]
+// Eliminación directa pura no maneja "byes": solo potencias de 2 arman un
+// cuadro parejo sin equipos que descansen la primera ronda.
+const TEAM_COUNTS_KNOCKOUT = [4, 8, 16, 32]
 
 function getGroupsConfig(teamCount: number, format: string): { numGroups: number; groupNames: string[] } {
   if (format === 'round_robin' || format === 'knockout') {
@@ -62,10 +65,12 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   }
 
   function handleFormatChange(f: string) {
+    const nextTeamCount = f === 'knockout' && !TEAM_COUNTS_KNOCKOUT.includes(teamCount) ? 8 : teamCount
     setFormat(f)
-    const { groupNames } = getGroupsConfig(teamCount, f)
-    const newTeams = Array.from({ length: teamCount }, (_, i) => {
-      const groupIndex = Math.floor(i / Math.ceil(teamCount / groupNames.length))
+    if (nextTeamCount !== teamCount) setTeamCount(nextTeamCount)
+    const { groupNames } = getGroupsConfig(nextTeamCount, f)
+    const newTeams = Array.from({ length: nextTeamCount }, (_, i) => {
+      const groupIndex = Math.floor(i / Math.ceil(nextTeamCount / groupNames.length))
       return { ...teams[i] ?? emptyTeam(), group: groupNames[Math.min(groupIndex, groupNames.length - 1)] }
     })
     setTeams(newTeams)
@@ -178,7 +183,7 @@ function downloadTemplate() {
 
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
-        .insert({ id: tournamentId, name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, slug, app: 'futbol' })
+        .insert({ id: tournamentId, name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, num_groups: getGroupsConfig(teamCount, format).numGroups, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, slug, app: 'futbol' })
         .select().single()
       if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message + ' code: ' + tournamentError.code)
       if (!tournament) throw new Error('INSERT torneo devolvió null')
@@ -329,13 +334,18 @@ function downloadTemplate() {
 
           <label style={{ ...styles.label, marginTop: 16 }}>Cantidad de equipos</label>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
-            {TEAM_COUNTS.map(n => (
+            {(format === 'knockout' ? TEAM_COUNTS_KNOCKOUT : TEAM_COUNTS).map(n => (
               <button key={n} onClick={() => handleTeamCountChange(n)}
                 style={{ ...styles.btnSm, background: teamCount === n ? '#C9A84C' : '#1A6B35', color: teamCount === n ? '#0D4F28' : '#fff', marginTop: 0, padding: '8px 14px' }}>
                 {n}
               </button>
             ))}
           </div>
+          {format === 'knockout' && (
+            <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: -4, marginBottom: 8 }}>
+              Eliminación directa pura solo admite potencias de 2, para que el cuadro cierre parejo sin "byes".
+            </p>
+          )}
 
           <label style={{ ...styles.label, marginTop: 16 }}>Formato del torneo</label>
           {FORMATS.map(f => (

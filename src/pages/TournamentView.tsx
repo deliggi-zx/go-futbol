@@ -330,6 +330,63 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     loadData()
   }
 
+  // Arma la primera ronda del cuadro de eliminación con los clasificados de
+  // TODOS los grupos (no solo A/B), usando tournaments.num_groups. Los
+  // partidos quedan con round/match_number, así que las rondas siguientes
+  // las genera generateNextKnockoutRound() como en el formato knockout puro.
+  async function generateKnockoutBracketFromGroups() {
+    const numGroups = tournament.num_groups ?? groups.length
+    const groupLetters = Array.from({ length: numGroups }, (_, i) => String.fromCharCode(65 + i))
+    const standingsByGroup = groupLetters.map(g => getStandings(g))
+    if (standingsByGroup.some(s => s.length < 2)) {
+      alert('Cada grupo necesita al menos 2 equipos para clasificar al cuadro de eliminación.')
+      return
+    }
+
+    const firsts = standingsByGroup.map(s => s[0])
+    const seconds = standingsByGroup.map(s => s[1])
+    const qualifierCount = firsts.length + seconds.length
+    if ((qualifierCount & (qualifierCount - 1)) !== 0) {
+      alert(`Con ${numGroups} grupos clasifican ${qualifierCount} equipos, y eso no arma un cuadro parejo de eliminación directa (hace falta una potencia de 2: 4, 8, 16...). No se soportan cuadros con "bye".`)
+      return
+    }
+
+    // 1° de cada grupo vs 2° del grupo siguiente (rotado), para evitar que
+    // se crucen dos equipos del mismo grupo en la primera ronda.
+    const pairs = firsts.map((first, i) => [first, seconds[(i + 1) % seconds.length]])
+    const stage = pairs.length === 1 ? 'final' : pairs.length === 2 ? 'semi' : 'quarter'
+
+    await supabase.from('matches').insert(
+      pairs.map((pair, i) => ({
+        tournament_id: tournament.id,
+        team_home_id: pair[0].id,
+        team_away_id: pair[1].id,
+        stage,
+        status: 'pending',
+        round: 1,
+        match_number: i + 1,
+        app: 'futbol',
+      }))
+    )
+    loadData()
+  }
+
+  // Todos contra todos: la final sale directo del 1° y 2° de la tabla general
+  // (mismo desempate que getAllTeamStandings: puntos, luego diferencia de gol).
+  async function generateRoundRobinFinal() {
+    const standings = getAllTeamStandings()
+    if (standings.length < 2) return
+    await supabase.from('matches').insert({
+      tournament_id: tournament.id,
+      team_home_id: standings[0].id,
+      team_away_id: standings[1].id,
+      stage: 'final',
+      status: 'pending',
+      app: 'futbol',
+    })
+    loadData()
+  }
+
   async function saveSchedule() {
     if (!scheduleDate) { alert('Elegí una fecha primero.'); return }
     const updates = matches
@@ -487,7 +544,12 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   }
 
   const round1MatchCount = knockoutMatches.filter(m => !m.is_third_place && m.round === 1).length
-  const knockoutTeamCount = tournament.team_count ?? (round1MatchCount > 0 ? round1MatchCount * 2 : null)
+  // En groups_knockout el cuadro arranca con los clasificados de los grupos
+  // (menos equipos que tournament.team_count), así que la cantidad real de
+  // rondas se calcula a partir del tamaño de la ronda 1, no del total inicial.
+  const knockoutTeamCount = tournament.format === 'groups_knockout'
+    ? (round1MatchCount > 0 ? round1MatchCount * 2 : null)
+    : tournament.team_count ?? (round1MatchCount > 0 ? round1MatchCount * 2 : null)
 
   function MatchCard({ match, group }: { match: any; group?: string }) {
     return (
@@ -595,13 +657,9 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                 onClick={async () => {
                   if (!confirm('Finalizar este torneo? Asegurate de haber cargado los premios en la tab Premios antes de continuar.')) return
                   const finalMatch = matches.find(m => m.stage === 'final' && m.status === 'finished')
-                  let winnerName = null
-                  if (finalMatch) {
-                    const hg = getMatchGoals(finalMatch.id, finalMatch.team_home_id)
-                    const ag = getMatchGoals(finalMatch.id, finalMatch.team_away_id)
-                    const winnerId = hg >= ag ? finalMatch.team_home_id : finalMatch.team_away_id
-                    winnerName = teams.find(t => t.id === winnerId)?.name ?? null
-                  }
+                  const winnerName = finalMatch?.winner_id
+                    ? teams.find(t => t.id === finalMatch.winner_id)?.name ?? null
+                    : null
                   await supabase.from('tournaments').update({ status: 'finished', finished_at: new Date().toISOString(), winner_team_name: winnerName }).eq('id', tournament.id)
                   setTab('awards')
                   alert('Torneo finalizado. Revisa la tab Premios para cargar los ganadores.')
@@ -702,40 +760,23 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                 )
               })()}
 
-              {isAdmin && knockoutMatches.length === 0 && groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished') && (
+              {isAdmin && tournament.format === 'groups_knockout' && knockoutMatches.length === 0 && groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished') && (
                 <button
                   style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 15, letterSpacing: 1 }}
-                  onClick={async () => {
-                    const standingsA = getStandings('A')
-                    const standingsB = getStandings('B')
-                    await supabase.from('matches').insert([
-                      { tournament_id: tournament.id, team_home_id: standingsA[0].id, team_away_id: standingsB[1].id, stage: 'semi', status: 'pending', app: 'futbol' },
-                      { tournament_id: tournament.id, team_home_id: standingsB[0].id, team_away_id: standingsA[1].id, stage: 'semi', status: 'pending', app: 'futbol' },
-                    ])
-                    loadData()
-                  }}>
-                  Generar semifinales →
+                  onClick={generateKnockoutBracketFromGroups}>
+                  Generar cuadro de eliminación →
                 </button>
               )}
 
-              {isAdmin && knockoutMatches.filter(m => m.stage === 'semi').every(m => m.status === 'finished') && knockoutMatches.filter(m => m.stage === 'semi').length === 2 && !knockoutMatches.find(m => m.stage === 'final') && (
+              {isAdmin && tournament.format === 'round_robin' && knockoutMatches.length === 0 && groupMatches.length > 0 && groupMatches.every(m => m.status === 'finished') && (
                 <button
                   style={{ background: `linear-gradient(135deg, ${gold}, #B8960C)`, color: darkBg, fontWeight: 700, border: 'none', borderRadius: 10, padding: '14px 24px', cursor: 'pointer', width: '100%', marginTop: 16, fontFamily: 'Georgia, serif', fontSize: 15, letterSpacing: 1 }}
-                  onClick={async () => {
-                    const semis = knockoutMatches.filter(m => m.stage === 'semi')
-                    const winners = semis.map(m => {
-                      const hg = getMatchGoals(m.id, m.team_home_id)
-                      const ag = getMatchGoals(m.id, m.team_away_id)
-                      return hg >= ag ? m.team_home_id : m.team_away_id
-                    })
-                    await supabase.from('matches').insert({ tournament_id: tournament.id, team_home_id: winners[0], team_away_id: winners[1], stage: 'final', status: 'pending', app: 'futbol' })
-                    loadData()
-                  }}>
+                  onClick={generateRoundRobinFinal}>
                   Generar final →
                 </button>
               )}
 
-              {isAdmin && tournament.format === 'knockout' && (() => {
+              {isAdmin && (tournament.format === 'knockout' || tournament.format === 'groups_knockout') && (() => {
                 const nonTP = matches.filter((m: any) => m.round != null && !m.is_third_place)
                 if (nonTP.length === 0) return null
                 const currentRound = Math.max(...nonTP.map((m: any) => m.round))
