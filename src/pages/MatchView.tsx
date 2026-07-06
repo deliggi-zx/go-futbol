@@ -83,6 +83,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null)
   const [cards, setCards] = useState<any[]>([])
   const [showCardPanel, setShowCardPanel] = useState(false)
+  const [substitutions, setSubstitutions] = useState<any[]>([])
+  const [showSubPanel, setShowSubPanel] = useState(false)
+  const [subTeamId, setSubTeamId] = useState<string | null>(null)
+  const [subOutId, setSubOutId] = useState<string | null>(null)
   const [liveMatchFields, setLiveMatchFields] = useState<any>(match)
   const [shotBusy, setShotBusy] = useState(false)
   const soundOnRef = useRef(true)
@@ -185,6 +189,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'substitutions', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
       .on('broadcast', { event: 'play_sound' }, ({ payload }) => playTriggeredSound(payload.sound))
       .subscribe()
@@ -270,18 +275,20 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function loadData() {
     setLoading(true)
-    const [g, p, v, m, c] = await Promise.all([
+    const [g, p, v, m, c, s] = await Promise.all([
       supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
       supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]).eq('app', 'futbol'),
       supabase.from('mvp_votes').select('id, player_id, device_id, player:players(*)').eq('match_id', match.id).eq('app', 'futbol'),
       supabase.from('mvp_official').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').single(),
       supabase.from('cards').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
+      supabase.from('substitutions').select('*, player_out:players!player_out_id(*), player_in:players!player_in_id(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
     ])
     setGoals(g.data ?? [])
     setPlayers(p.data ?? [])
     setMvpVotes(v.data ?? [])
     setMvpOfficial(m.data)
     setCards(c.data ?? [])
+    setSubstitutions(s.data ?? [])
     setLoading(false)
   }
 
@@ -328,6 +335,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const homePending = goals.filter(g => g.team_id === match.team_home_id && !g.player_id).length
   const awayPending = goals.filter(g => g.team_id === match.team_away_id && !g.player_id).length
   const hasVoted = mvpVotes.some(v => v.device_id === deviceId) || localStorage.getItem(`voted_match_${match.id}`) === 'true'
+
+  const timelineEvents = [
+    ...goals.map(g => ({ kind: 'goal' as const, id: g.id, created_at: g.created_at, item: g })),
+    ...cards.map(c => ({ kind: 'card' as const, id: c.id, created_at: c.created_at, item: c })),
+    ...substitutions.map(s => ({ kind: 'sub' as const, id: s.id, created_at: s.created_at, item: s })),
+  ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
   async function addGoalNoPlayer(teamId: string) {
     if (saving) return
@@ -470,6 +483,25 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       app: 'futbol',
     })
     if (error) { alert(`Error al registrar tarjeta: ${error.message}`); setSaving(false); return }
+    await loadData()
+    setSaving(false)
+  }
+
+  async function addSubstitution(teamId: string, outPlayerId: string, inPlayerId: string) {
+    if (saving) return
+    setSaving(true)
+    const { error } = await supabase.from('substitutions').insert({
+      match_id: match.id,
+      team_id: teamId,
+      player_out_id: outPlayerId,
+      player_in_id: inPlayerId,
+      period: period,
+      org_id: tournament.org_id ?? null,
+      app: 'futbol',
+    })
+    if (error) { alert(`Error al registrar cambio: ${error.message}`); setSaving(false); return }
+    setSubTeamId(null)
+    setSubOutId(null)
     await loadData()
     setSaving(false)
   }
@@ -1024,44 +1056,140 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         </div>
       )}
 
-      {/* Historial de goles */}
-      {goals.length > 0 && (
+      {/* Panel cambios */}
+      {isAdmin && match.status !== 'finished' && (
         <div style={{ margin: '0 16px 16px' }}>
-          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>GOLES</p>
-          <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
-            {goals.map((g, i) => (
-              <div key={g.id}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                  <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>#{i + 1} T.{g.chukker}</span>
-                  <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: g.player_id ? '#fff' : '#fb923c' }}>
-                    {g.player?.name ?? '⚡ Sin asignar'}
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 80, justifyContent: 'flex-end' }}>
-                    <span style={{ color: '#a8d5b5', fontSize: 11 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
-                    {isAdmin && (
-                      <button onClick={() => setEditingGoalId(editingGoalId === g.id ? null : g.id)}
-                        style={{ background: 'none', border: `1px solid ${gold}44`, borderRadius: 6, padding: '2px 8px', color: gold, cursor: 'pointer', fontSize: 11 }}>
-                        ✏️
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {editingGoalId === g.id && isAdmin && (
-                  <div style={{ background: 'rgba(0,0,0,0.6)', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                    <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                      {players.filter(p => p.team_id === g.team_id && !isPlayerExpelled(p.id)).map(player => (
-                        <button key={player.id}
-                          onClick={() => reassignGoal(g.id, player.id)}
-                          style={{ background: g.player_id === player.id ? gold : 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
-                          {player.name}
+          <button
+            onClick={() => setShowSubPanel(!showSubPanel)}
+            style={{ width: '100%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, border: `1px solid ${gold}33`, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>CAMBIOS</span>
+            <span style={{ fontSize: 18 }}>{showSubPanel ? '▲' : '▼'}</span>
+          </button>
+
+          {showSubPanel && (
+            <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: '0 0 12px 12px', border: `1px solid ${gold}33`, borderTop: 'none', padding: 16 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: subTeamId ? 16 : 0 }}>
+                {[
+                  { team: match.team_home, teamId: match.team_home_id },
+                  { team: match.team_away, teamId: match.team_away_id },
+                ].map(({ team, teamId }) => (
+                  <button key={teamId}
+                    onClick={() => { setSubTeamId(subTeamId === teamId ? null : teamId); setSubOutId(null) }}
+                    style={{ flex: 1, background: subTeamId === teamId ? gold : 'rgba(0,0,0,0.4)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: subTeamId === teamId ? '#0D4F28' : gold, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif' }}>
+                    🔄 Cambio {team?.name}
+                  </button>
+                ))}
+              </div>
+
+              {subTeamId && (
+                <div>
+                  <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>
+                    {subOutId ? 'Tocá el jugador que entra' : 'Tocá el jugador que sale'}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: gold, fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>SALE</p>
+                      {players.filter(p => p.team_id === subTeamId).map(player => (
+                        <button key={player.id} disabled={saving}
+                          onClick={() => setSubOutId(player.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: subOutId === player.id ? gold : 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: subOutId === player.id ? '#0D4F28' : '#fff', fontSize: 13, textAlign: 'left' as const }}>
+                          <Avatar url={player.photo_url} name={player.name} size={32} />
+                          <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ width: 1, background: `linear-gradient(180deg, transparent, ${gold}44, transparent)` }} />
+                    <div style={{ flex: 1 }}>
+                      <p style={{ color: subOutId ? gold : '#666', fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>ENTRA</p>
+                      {players.filter(p => p.team_id === subTeamId && p.id !== subOutId).map(player => (
+                        <button key={player.id} disabled={!subOutId || saving}
+                          onClick={() => addSubstitution(subTeamId, subOutId as string, player.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '10px 12px', cursor: subOutId ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: subOutId ? 1 : 0.4 }}>
+                          <Avatar url={player.photo_url} name={player.name} size={32} />
+                          <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
                         </button>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <button onClick={() => { setSubTeamId(null); setSubOutId(null) }}
+                    style={{ marginTop: 12, width: '100%', background: 'transparent', border: `1px solid ${gold}33`, borderRadius: 10, padding: '10px', cursor: 'pointer', color: `${gold}99`, fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif' }}>
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Cronología del partido — goles, tarjetas y cambios ordenados por created_at */}
+      {timelineEvents.length > 0 && (
+        <div style={{ margin: '0 16px 16px' }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>CRONOLOGÍA</p>
+          <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, overflow: 'hidden', border: `1px solid ${gold}44` }}>
+            {timelineEvents.map(ev => {
+              if (ev.kind === 'goal') {
+                const g = ev.item
+                return (
+                  <div key={`goal-${g.id}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                      <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>⚽ T.{g.chukker}</span>
+                      <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: g.player_id ? '#fff' : '#fb923c' }}>
+                        {g.player?.name ?? '⚡ Sin asignar'}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 80, justifyContent: 'flex-end' }}>
+                        <span style={{ color: '#a8d5b5', fontSize: 11 }}>{g.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}</span>
+                        {isAdmin && (
+                          <button onClick={() => setEditingGoalId(editingGoalId === g.id ? null : g.id)}
+                            style={{ background: 'none', border: `1px solid ${gold}44`, borderRadius: 6, padding: '2px 8px', color: gold, cursor: 'pointer', fontSize: 11 }}>
+                            ✏️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {editingGoalId === g.id && isAdmin && (
+                      <div style={{ background: 'rgba(0,0,0,0.6)', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                        <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                          {players.filter(p => p.team_id === g.team_id && !isPlayerExpelled(p.id)).map(player => (
+                            <button key={player.id}
+                              onClick={() => reassignGoal(g.id, player.id)}
+                              style={{ background: g.player_id === player.id ? gold : 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
+                              {player.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              }
+              if (ev.kind === 'card') {
+                const c = ev.item
+                return (
+                  <div key={`card-${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
+                    <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>{c.card_type === 'red' ? '🟥' : '🟨'} T.{c.period}</span>
+                    <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: c.card_type === 'red' ? '#ef4444' : '#facc15' }}>
+                      {c.player?.name ?? '?'}
+                    </span>
+                    <span style={{ color: '#a8d5b5', fontSize: 11, minWidth: 80, textAlign: 'right' as const }}>
+                      {c.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}
+                    </span>
+                  </div>
+                )
+              }
+              const s = ev.item
+              return (
+                <div key={`sub-${s.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, gap: 8 }}>
+                  <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', color: '#93c5fd' }}>
+                    🔄 Sale {s.player_out?.name ?? '?'} - Entra {s.player_in?.name ?? '?'} (Tiempo {s.period})
+                  </span>
+                  <span style={{ color: '#a8d5b5', fontSize: 11, minWidth: 80, textAlign: 'right' as const }}>
+                    {s.team_id === match.team_home_id ? match.team_home?.name : match.team_away?.name}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
