@@ -73,6 +73,58 @@ function PublicView() {
   )
 }
 
+// Vista pública de un torneo puntual por su slug propio (a diferencia de
+// PublicView, que resuelve por slug de organización y solo muestra el
+// torneo activo — este permite compartir cualquier torneo, finalizado o no).
+function PublicTournamentView() {
+  const { slug } = useParams()
+  const [tournament, setTournament] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [initialMatchId, setInitialMatchId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const matchId = params.get('match')
+    if (matchId) setInitialMatchId(matchId)
+    loadTournament()
+  }, [slug])
+
+  async function loadTournament() {
+    const { data } = await supabase
+      .from('tournaments')
+      .select('id, name, date, periods_per_match, status, format, org_id, has_third_place, created_at, finished_at, winner_team_name')
+      .eq('slug', slug)
+      .eq('app', 'futbol')
+      .maybeSingle()
+
+    setTournament(data)
+    setLoading(false)
+  }
+
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0A3D1F', gap: 20 }}>
+      <img src="/logo.png" alt="Go Fútbol" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
+      <p style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700 }}>Cargando...</p>
+    </div>
+  )
+
+  if (!tournament) return (
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0A3D1F', gap: 16 }}>
+      <img src="/logo.png" alt="Go Fútbol" style={{ width: 160, borderRadius: 16, objectFit: 'contain' }} />
+      <p style={{ color: '#C9A84C', fontSize: 20, fontWeight: 800 }}>GO FÚTBOL</p>
+      <p style={{ color: '#a8d5b5', fontSize: 15 }}>No encontramos ese torneo</p>
+    </div>
+  )
+
+  return (
+    <TournamentView
+      tournament={tournament}
+      onReset={loadTournament}
+      initialMatchId={initialMatchId}
+    />
+  )
+}
+
 // Panel admin
 function AdminPanel() {
   const [user, setUser] = useState<any>(null)
@@ -138,6 +190,7 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/superadmin" element={<SuperAdmin />} />
         <Route path="/tournament/:id/bracket" element={<TournamentBracket />} />
+        <Route path="/t/:slug" element={<PublicTournamentView />} />
         <Route path="/:slug" element={<PublicView />} />
       </Routes>
     </BrowserRouter>

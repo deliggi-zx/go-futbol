@@ -22,7 +22,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
   async function loadTournaments() {
     const { data } = await supabase
       .from('tournaments')
-      .select('id, name, date, format, status, finished_at, winner_team_name, periods_per_match')
+      .select('id, name, date, format, status, finished_at, winner_team_name, periods_per_match, slug')
       .eq('org_id', org.id)
       .eq('app', 'futbol')
       .order('created_at', { ascending: false })
@@ -180,7 +180,7 @@ export default function AdminDashboard({ org, onLogout }: Props) {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                     <span style={styles.badge(tournament.status)}>{tournament.status === 'finished' ? 'Finalizado' : 'Activo'}</span>
-                    <a href={`https://go-futbol.vercel.app/${org.slug}`} target="_blank" style={{ color: '#C9A84C', fontSize: 11, textDecoration: 'none' }}>
+                    <a href={tournament.slug ? `https://go-futbol.vercel.app/t/${tournament.slug}` : `https://go-futbol.vercel.app/${org.slug}`} target="_blank" style={{ color: '#C9A84C', fontSize: 11, textDecoration: 'none' }}>
                       Ver público →
                     </a>
                   </div>

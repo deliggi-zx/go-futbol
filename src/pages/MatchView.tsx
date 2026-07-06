@@ -109,6 +109,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   const periodSeconds = (tournament.chukker_duration_minutes ?? 45) * 60
   const totalPeriods = tournament.periods_per_match ?? 2
+  const isKnockoutMatch = match.stage !== 'group'
+  // Una vez que se arrancó algún período extra (chukker > totalPeriods), queda
+  // desbloqueado permanentemente para este partido — se deriva del propio clock,
+  // sin columna nueva.
+  const extraTimeUnlocked = !!clock && clock.chukker > totalPeriods
+  const effectiveTotalPeriods = extraTimeUnlocked ? totalPeriods + 2 : totalPeriods
 
   function getBaseSeconds(periodNum: number): number {
     return (periodNum - 1) * periodSeconds
@@ -332,6 +338,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   const homeGoals = goals.filter(g => g.team_id === match.team_home_id).length
   const awayGoals = goals.filter(g => g.team_id === match.team_away_id).length
+  // Terminó el último período reglamentario, sigue empatado, y todavía no se jugó
+  // tiempo extra ni se habilitaron los penales: hay que ofrecer el tiempo extra.
+  const regulationJustEndedTied = isKnockoutMatch
+    && !shootoutActive
+    && !extraTimeUnlocked
+    && clock?.status === 'stopped'
+    && clock.chukker === totalPeriods
+    && homeGoals === awayGoals
   const homePending = goals.filter(g => g.team_id === match.team_home_id && !g.player_id).length
   const awayPending = goals.filter(g => g.team_id === match.team_away_id && !g.player_id).length
   const hasVoted = mvpVotes.some(v => v.device_id === deviceId) || localStorage.getItem(`voted_match_${match.id}`) === 'true'
@@ -579,13 +593,15 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
   const clockColor = clockIsOvertime ? '#ef4444' : '#00ff88'
   const clockGlow = clockIsOvertime ? 'rgba(239,68,68,0.9)' : 'rgba(0,255,136,0.9)'
 
-  const periodLabel = clock
-    ? clock.chukker === 1 ? '1° TIEMPO'
-    : clock.chukker === 2 ? '2° TIEMPO'
-    : clock.chukker === 3 ? '1° TIEMPO EXTRA'
-    : clock.chukker === 4 ? '2° TIEMPO EXTRA'
-    : `TIEMPO ${clock.chukker}`
-    : ''
+  function periodLabelFor(chukkerNum: number): string {
+    if (chukkerNum <= totalPeriods) {
+      return chukkerNum === 1 ? '1° TIEMPO' : chukkerNum === 2 ? '2° TIEMPO' : `TIEMPO ${chukkerNum}`
+    }
+    const extraIndex = chukkerNum - totalPeriods
+    return extraIndex === 1 ? '1° TIEMPO EXTRA' : extraIndex === 2 ? '2° TIEMPO EXTRA' : `TIEMPO EXTRA ${extraIndex}`
+  }
+
+  const periodLabel = clock ? periodLabelFor(clock.chukker) : ''
 
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#0A3D1F', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -855,10 +871,18 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                   </button>
                 </>
               )}
-              {clock?.status === 'stopped' && clock.chukker < totalPeriods && (
+              {clock?.status === 'stopped' && clock.chukker < effectiveTotalPeriods && (
                 <button onClick={() => startClock(clock.chukker + 1)}
                   style={{ background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                  Iniciar {clock.chukker + 1 === 2 ? '2° Tiempo' : `Tiempo ${clock.chukker + 1}`}
+                  Iniciar {clock.chukker + 1 <= totalPeriods
+                    ? (clock.chukker + 1 === 2 ? '2° Tiempo' : `Tiempo ${clock.chukker + 1}`)
+                    : (clock.chukker + 1 - totalPeriods === 1 ? '1° Tiempo Extra' : '2° Tiempo Extra')}
+                </button>
+              )}
+              {regulationJustEndedTied && (
+                <button onClick={() => startClock(totalPeriods + 1)}
+                  style={{ background: 'linear-gradient(135deg, #7c2d12, #9a3412)', border: '1px solid #fb923c66', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#fb923c', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                  Jugar tiempo extra
                 </button>
               )}
             </div>
@@ -871,7 +895,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
           <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>DEFINICIÓN POR PENALES</p>
           <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 16 }}>
-            Empate en tiempo regular ({homeGoals}-{awayGoals}){isAdmin ? ' · Cargá cada penal a medida que se patea' : ''}
+            Empate {extraTimeUnlocked ? 'tras el tiempo extra' : 'en tiempo regular'} ({homeGoals}-{awayGoals}){isAdmin ? ' · Cargá cada penal a medida que se patea' : ''}
           </p>
 
           {([
@@ -950,7 +974,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, justifyContent: 'center' }}>
             <span style={{ color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>Tiempo:</span>
             <input style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}`, borderRadius: 8, padding: '8px 12px', color: gold, fontSize: 15, width: 60, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }}
-              type="number" min={1} max={tournament.periods_per_match} value={period} onChange={e => setPeriod(Number(e.target.value))} />
+              type="number" min={1} max={effectiveTotalPeriods} value={period} onChange={e => setPeriod(Number(e.target.value))} />
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
@@ -998,11 +1022,18 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 Deshacer
               </button>
             )}
-            <button onClick={finishMatch}
-              style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-              Finalizar partido
-            </button>
+            {!regulationJustEndedTied && (
+              <button onClick={finishMatch}
+                style={{ flex: 1, background: 'rgba(22,101,52,0.6)', border: `1px solid #4ade8066`, borderRadius: 10, padding: '14px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                Finalizar partido
+              </button>
+            )}
           </div>
+          {regulationJustEndedTied && (
+            <p style={{ color: '#fb923c', fontSize: 12, textAlign: 'center' as const, marginTop: 10, marginBottom: 0, fontFamily: 'Georgia, serif' }}>
+              Empate al final del tiempo reglamentario — jugá el tiempo extra para definir antes de ir a penales.
+            </p>
+          )}
         </div>
       )}
 

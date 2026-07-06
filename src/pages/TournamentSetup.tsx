@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Avatar } from '../components/Avatar'
+import { slugify } from '../lib/slug'
 import * as XLSX from 'xlsx'
 
 type Props = { onCreated: (t: any) => void; orgId?: string }
@@ -165,9 +166,19 @@ function downloadTemplate() {
     if (!name || !date) return alert('Completa nombre y fecha')
     setSaving(true)
     try {
+      const tournamentId = crypto.randomUUID()
+      const baseSlug = slugify(name) || 'torneo'
+      const { data: slugCollision } = await supabase
+        .from('tournaments')
+        .select('id')
+        .eq('slug', baseSlug)
+        .eq('app', 'futbol')
+        .maybeSingle()
+      const slug = slugCollision ? `${baseSlug}-${tournamentId.slice(0, 4)}` : baseSlug
+
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
-        .insert({ name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, app: 'futbol' })
+        .insert({ id: tournamentId, name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, slug, app: 'futbol' })
         .select().single()
       if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message + ' code: ' + tournamentError.code)
       if (!tournament) throw new Error('INSERT torneo devolvió null')
