@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { knockoutRoundLabel } from '../lib/knockout'
 import { teamResultStyle, penaltyScoreLabel } from '../lib/matchResult'
 import { QRCodeSVG } from 'qrcode.react'
-import { Hand, PartyPopper } from 'lucide-react'
+import { Hand, PartyPopper, MicVocal, Radio } from 'lucide-react'
+import Daily from '@daily-co/daily-js'
 import { Avatar } from '../components/Avatar'
 import PlayerCard from './PlayerCard'
 
@@ -85,6 +86,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [liveMatchFields, setLiveMatchFields] = useState<any>(match)
   const [shotBusy, setShotBusy] = useState(false)
   const soundOnRef = useRef(true)
+
+  const [micOn, setMicOn] = useState(false)
+  const [narrationMuted, setNarrationMuted] = useState(false)
+  const dailyCallRef = useRef<any>(null)
+  const micRequestedRef = useRef(false)
+  const narrationMutedRef = useRef(false)
+  const remoteAudioElsRef = useRef<HTMLAudioElement[]>([])
 
   const [clock, setClock] = useState<any | null>(null)
   const clockRef = useRef<any | null>(null)
@@ -183,6 +191,82 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     channelRef.current = channel
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
+
+  // Relato en vivo (Daily.co): todos se unen como oyentes apenas se abre el
+  // partido, sin pedir permiso de microfono. El admin activa su microfono
+  // recien cuando toca el boton de relato.
+  useEffect(() => {
+    let cancelled = false
+    let call: any = null
+
+    function attachRemoteAudio(event: any) {
+      if (event.participant?.local) return
+      if (event.track.kind !== 'audio') return
+      const audioEl = document.createElement('audio')
+      audioEl.autoplay = true
+      audioEl.muted = narrationMutedRef.current
+      audioEl.srcObject = new MediaStream([event.track])
+      remoteAudioElsRef.current.push(audioEl)
+    }
+
+    async function connect() {
+      const { data, error } = await supabase.functions.invoke('daily-room', {
+        body: { match_id: match.id, action: 'get-or-create' },
+      })
+      if (cancelled || error || !data?.url) return
+
+      call = Daily.createCallObject()
+      dailyCallRef.current = call
+      call.on('track-started', attachRemoteAudio)
+      try {
+        await call.join({ url: data.url, videoSource: false, audioSource: false })
+      } catch (e) {
+        // Silencioso: el relato en vivo es un extra, no debe romper la pantalla del partido.
+      }
+    }
+
+    connect()
+
+    return () => {
+      cancelled = true
+      remoteAudioElsRef.current = []
+      if (call) { call.leave().catch(() => {}); call.destroy().catch(() => {}) }
+      dailyCallRef.current = null
+      micRequestedRef.current = false
+    }
+  }, [match.id])
+
+  async function toggleMic() {
+    const call = dailyCallRef.current
+    if (!call) return
+    const next = !micOn
+    try {
+      if (next && !micRequestedRef.current) {
+        await call.setInputDevicesAsync({ audioSource: true })
+        micRequestedRef.current = true
+      } else {
+        call.setLocalAudio(next)
+      }
+      setMicOn(next)
+    } catch (e) {
+      alert('No se pudo activar el micrófono. Revisá el permiso del navegador.')
+    }
+  }
+
+  function toggleNarrationMuted() {
+    const next = !narrationMuted
+    narrationMutedRef.current = next
+    remoteAudioElsRef.current.forEach((el) => { el.muted = next })
+    setNarrationMuted(next)
+  }
+
+  async function closeDailyRoom() {
+    try {
+      await supabase.functions.invoke('daily-room', { body: { match_id: match.id, action: 'close' } })
+    } catch (e) {
+      // No bloquea el cierre del partido si esto falla.
+    }
+  }
 
   async function loadData() {
     setLoading(true)
@@ -302,6 +386,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       away_score: awayGoals,
       winner_id: winnerId,
     }).eq('id', match.id)
+    closeDailyRoom()
     onBack()
   }
 
@@ -357,6 +442,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       penalty_away_sequence: awaySeq,
       winner_id: winnerId,
     }).eq('id', match.id)
+    closeDailyRoom()
     onBack()
   }
 
@@ -533,6 +619,17 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 <button onClick={() => triggerSound('applause')} title="Aplausos" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <Hand size={15} />
                 </button>
+                <button
+                  onClick={toggleMic}
+                  title={micOn ? 'Dejar de relatar' : 'Relatar en vivo'}
+                  style={{
+                    background: micOn ? 'rgba(220,38,38,0.25)' : 'rgba(0,0,0,0.5)',
+                    border: `1px solid ${micOn ? '#ef4444' : gold + '66'}`,
+                    borderRadius: 8, padding: '4px 10px', color: micOn ? '#ef4444' : gold, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                  }}
+                >
+                  <MicVocal size={15} />
+                </button>
                 <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <img src="/icons/silbato.png" alt="Silbato" style={{ width: 16, height: 16, objectFit: 'contain' as const }} />
                 </button>
@@ -541,6 +638,13 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 </button>
               </>
             )}
+            <button
+              onClick={toggleNarrationMuted}
+              title={narrationMuted ? 'Activar relato en vivo' : 'Silenciar relato en vivo'}
+              style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: narrationMuted ? '#666' : gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            >
+              <Radio size={15} />
+            </button>
             <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
             </button>
