@@ -87,6 +87,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [showSubPanel, setShowSubPanel] = useState(false)
   const [subTeamId, setSubTeamId] = useState<string | null>(null)
   const [subOutId, setSubOutId] = useState<string | null>(null)
+  const [lineups, setLineups] = useState<any[]>([])
+  const [showLineupPanel, setShowLineupPanel] = useState(false)
+  const [starterIds, setStarterIds] = useState<Set<string>>(new Set())
   const [liveMatchFields, setLiveMatchFields] = useState<any>(match)
   const [shotBusy, setShotBusy] = useState(false)
   const soundOnRef = useRef(true)
@@ -196,6 +199,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'substitutions', filter: `match_id=eq.${match.id}` }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups', filter: `match_id=eq.${match.id}` }, () => loadData())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
       .on('broadcast', { event: 'play_sound' }, ({ payload }) => playTriggeredSound(payload.sound))
       .subscribe()
@@ -281,13 +285,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   async function loadData() {
     setLoading(true)
-    const [g, p, v, m, c, s] = await Promise.all([
+    const [g, p, v, m, c, s, l] = await Promise.all([
       supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
       supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]).eq('app', 'futbol'),
       supabase.from('mvp_votes').select('id, player_id, device_id, player:players(*)').eq('match_id', match.id).eq('app', 'futbol'),
       supabase.from('mvp_official').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').single(),
       supabase.from('cards').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
       supabase.from('substitutions').select('*, player_out:players!player_out_id(*), player_in:players!player_in_id(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
+      supabase.from('match_lineups').select('*').eq('match_id', match.id).eq('app', 'futbol'),
     ])
     setGoals(g.data ?? [])
     setPlayers(p.data ?? [])
@@ -295,6 +300,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setMvpOfficial(m.data)
     setCards(c.data ?? [])
     setSubstitutions(s.data ?? [])
+    setLineups(l.data ?? [])
+    setStarterIds(new Set((l.data ?? []).map((row: any) => row.player_id)))
     setLoading(false)
   }
 
@@ -500,6 +507,44 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
     if (error) { alert(`Error al registrar tarjeta: ${error.message}`); setSaving(false); return }
     await loadData()
     setSaving(false)
+  }
+
+  function toggleStarter(playerId: string) {
+    setStarterIds(prev => {
+      const next = new Set(prev)
+      if (next.has(playerId)) next.delete(playerId); else next.add(playerId)
+      return next
+    })
+  }
+
+  async function saveLineups() {
+    if (saving) return
+    setSaving(true)
+    await supabase.from('match_lineups').delete().eq('match_id', match.id).eq('app', 'futbol')
+    const rows = Array.from(starterIds)
+      .map(playerId => players.find(p => p.id === playerId))
+      .filter((p): p is any => !!p)
+      .map(p => ({ match_id: match.id, team_id: p.team_id, player_id: p.id, org_id: tournament.org_id ?? null, app: 'futbol' }))
+    if (rows.length > 0) {
+      const { error } = await supabase.from('match_lineups').insert(rows)
+      if (error) { alert(`Error al guardar titulares: ${error.message}`); setSaving(false); return }
+    }
+    await loadData()
+    setSaving(false)
+  }
+
+  // Jugadores "en cancha" para un equipo: arranca de los titulares cargados
+  // (o del plantel completo si no se cargó lineup) y se recalcula aplicando
+  // en orden cronológico cada cambio — así un jugador puede volver a entrar
+  // después de haber salido, sin restricción.
+  function onFieldIds(teamId: string): Set<string> {
+    const teamPlayerIds = players.filter(p => p.team_id === teamId).map(p => p.id)
+    const starters = lineups.filter(l => l.team_id === teamId).map(l => l.player_id)
+    const onField = new Set(starters.length > 0 ? starters : teamPlayerIds)
+    substitutions
+      .filter(s => s.team_id === teamId)
+      .forEach(s => { onField.delete(s.player_out_id); onField.add(s.player_in_id) })
+    return onField
   }
 
   async function addSubstitution(teamId: string, outPlayerId: string, inPlayerId: string) {
@@ -966,6 +1011,49 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         </div>
       )}
 
+      {/* Panel titulares — opcional, solo antes de arrancar el partido */}
+      {isAdmin && !clock && match.status !== 'finished' && (
+        <div style={{ margin: '16px' }}>
+          <button
+            onClick={() => setShowLineupPanel(!showLineupPanel)}
+            style={{ width: '100%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 12, border: `1px solid ${gold}33`, padding: '12px 16px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, fontFamily: 'Georgia, serif' }}>TITULARES (OPCIONAL)</span>
+            <span style={{ fontSize: 18 }}>{showLineupPanel ? '▲' : '▼'}</span>
+          </button>
+
+          {showLineupPanel && (
+            <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: '0 0 12px 12px', border: `1px solid ${gold}33`, borderTop: 'none', padding: 16 }}>
+              <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 12 }}>
+                Marcá quiénes arrancan de titulares en cada equipo. Si no marcás a nadie, todo el plantel queda disponible para cambios.
+              </p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { team: match.team_home, teamId: match.team_home_id },
+                  { team: match.team_away, teamId: match.team_away_id },
+                ].map(({ team, teamId }) => (
+                  <div key={teamId} style={{ flex: 1 }}>
+                    <p style={{ color: gold, fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>{team?.name}</p>
+                    {players.filter(p => p.team_id === teamId).map(player => (
+                      <button key={player.id} disabled={saving}
+                        onClick={() => toggleStarter(player.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: starterIds.has(player.id) ? gold : 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', color: starterIds.has(player.id) ? '#0D4F28' : '#fff', fontSize: 12, textAlign: 'left' as const }}>
+                        <Avatar url={player.photo_url} name={player.name} size={26} />
+                        <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                        {starterIds.has(player.id) && <span>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <button onClick={saveLineups} disabled={saving}
+                style={{ marginTop: 12, width: '100%', background: 'linear-gradient(135deg, #0d3320, #166534)', border: '1px solid #4ade8066', borderRadius: 10, padding: '10px', cursor: 'pointer', color: '#4ade80', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+                Guardar titulares
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Panel asignación */}
       {isAdmin && match.status !== 'finished' && !shootoutActive && (
         <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
@@ -1120,8 +1208,8 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{ flex: 1 }}>
-                      <p style={{ color: gold, fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>SALE</p>
-                      {players.filter(p => p.team_id === subTeamId).map(player => (
+                      <p style={{ color: gold, fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>EN CANCHA</p>
+                      {players.filter(p => p.team_id === subTeamId && onFieldIds(subTeamId).has(p.id)).map(player => (
                         <button key={player.id} disabled={saving}
                           onClick={() => setSubOutId(player.id)}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: subOutId === player.id ? gold : 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '10px 12px', cursor: 'pointer', color: subOutId === player.id ? '#0D4F28' : '#fff', fontSize: 13, textAlign: 'left' as const }}>
@@ -1132,8 +1220,8 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                     </div>
                     <div style={{ width: 1, background: `linear-gradient(180deg, transparent, ${gold}44, transparent)` }} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ color: subOutId ? gold : '#666', fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>ENTRA</p>
-                      {players.filter(p => p.team_id === subTeamId && p.id !== subOutId).map(player => (
+                      <p style={{ color: subOutId ? gold : '#666', fontWeight: 700, fontSize: 12, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>BANCO</p>
+                      {players.filter(p => p.team_id === subTeamId && !onFieldIds(subTeamId).has(p.id)).map(player => (
                         <button key={player.id} disabled={!subOutId || saving}
                           onClick={() => addSubstitution(subTeamId, subOutId as string, player.id)}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '10px 12px', cursor: subOutId ? 'pointer' : 'default', color: '#fff', fontSize: 13, textAlign: 'left' as const, opacity: subOutId ? 1 : 0.4 }}>
