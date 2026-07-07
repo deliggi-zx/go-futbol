@@ -363,7 +363,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       return
     }
     setSaving(true)
-    const { error } = await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker: period, app: 'futbol' })
+    const minute = Math.max(0, Math.floor(clockElapsed / 60))
+    const { error } = await supabase.from('goals').insert({ match_id: match.id, player_id: null, team_id: teamId, chukker: period, minute, app: 'futbol' })
     if (error) { alert(`Error al registrar gol: ${error.message}`); setSaving(false); return }
     await supabase.from('matches').update({ status: 'live', period_current: period }).eq('id', match.id)
     await loadData()
@@ -1164,7 +1165,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 return (
                   <div key={`goal-${g.id}`}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                      <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>⚽ T.{g.chukker}</span>
+                      <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>⚽ T.{g.chukker}{g.minute != null ? ` · ${g.minute}'` : ''}</span>
                       <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: g.player_id ? '#fff' : '#fb923c' }}>
                         {g.player?.name ?? '⚡ Sin asignar'}
                       </span>
