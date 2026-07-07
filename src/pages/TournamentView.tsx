@@ -242,8 +242,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     for (const c of cards) {
       if (!c.player) continue
       if (!map[c.player_id]) map[c.player_id] = { player: c.player, team: c.team, yellows: 0, reds: 0 }
-      if (c.card_type === 'yellow') map[c.player_id].yellows++
-      else if (c.card_type === 'red') map[c.player_id].reds++
+      if (c.type === 'yellow') map[c.player_id].yellows++
+      else if (c.type === 'red') map[c.player_id].reds++
     }
     return Object.values(map).sort((a, b) => (b.reds * 10 + b.yellows) - (a.reds * 10 + a.yellows))
   }

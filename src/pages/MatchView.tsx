@@ -488,8 +488,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     await loadData()
   }
 async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red') {
-    const playerYellows = cards.filter(c => c.player_id === playerId && c.card_type === 'yellow').length
-    const isExpelled = cards.some(c => c.player_id === playerId && c.card_type === 'red')
+    const playerYellows = cards.filter(c => c.player_id === playerId && c.type === 'yellow').length
+    const isExpelled = cards.some(c => c.player_id === playerId && c.type === 'red')
     if (isExpelled || saving) return
     let finalType: 'yellow' | 'red' = type
     if (type === 'yellow' && playerYellows >= 1) {
@@ -500,7 +500,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       match_id: match.id,
       player_id: playerId,
       team_id: teamId,
-      card_type: finalType,
+      type: finalType,
       period: period,
       app: 'futbol',
     })
@@ -567,11 +567,11 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
   }
 
   function isPlayerExpelled(playerId: string) {
-    return cards.some(c => c.player_id === playerId && c.card_type === 'red')
+    return cards.some(c => c.player_id === playerId && c.type === 'red')
   }
 
   function getPlayerYellows(playerId: string) {
-    return cards.filter(c => c.player_id === playerId && c.card_type === 'yellow').length
+    return cards.filter(c => c.player_id === playerId && c.type === 'yellow').length
   }
   async function setOfficialMvp(playerId: string) {
     await supabase.from('mvp_official').upsert({ match_id: match.id, player_id: playerId })
@@ -870,8 +870,8 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
           {cards.length > 0 && (
             <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap' as const, gap: 6, justifyContent: 'center' }}>
               {cards.map(c => (
-                <span key={c.id} style={{ fontSize: 11, color: c.card_type === 'red' ? '#ef4444' : '#facc15', fontFamily: 'Georgia, serif', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: '2px 10px', border: `1px solid ${c.card_type === 'red' ? '#ef444444' : '#facc1544'}` }}>
-                  {c.card_type === 'red' ? '🟥' : '🟨'} {c.player?.name ?? '?'}
+                <span key={c.id} style={{ fontSize: 11, color: c.type === 'red' ? '#ef4444' : '#facc15', fontFamily: 'Georgia, serif', background: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: '2px 10px', border: `1px solid ${c.type === 'red' ? '#ef444444' : '#facc1544'}` }}>
+                  {c.type === 'red' ? '🟥' : '🟨'} {c.player?.name ?? '?'}
                 </span>
               ))}
             </div>
@@ -1288,8 +1288,8 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 const c = ev.item
                 return (
                   <div key={`card-${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                    <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>{c.card_type === 'red' ? '🟥' : '🟨'} T.{c.period}</span>
-                    <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: c.card_type === 'red' ? '#ef4444' : '#facc15' }}>
+                    <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>{c.type === 'red' ? '🟥' : '🟨'} T.{c.period}</span>
+                    <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: c.type === 'red' ? '#ef4444' : '#facc15' }}>
                       {c.player?.name ?? '?'}
                     </span>
                     <span style={{ color: '#a8d5b5', fontSize: 11, minWidth: 80, textAlign: 'right' as const }}>
