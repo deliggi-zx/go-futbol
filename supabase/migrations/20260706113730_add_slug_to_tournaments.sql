@@ -1,0 +1,1 @@
+ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS slug text UNIQUE;
