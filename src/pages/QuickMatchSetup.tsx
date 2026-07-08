@@ -74,7 +74,7 @@ export default function QuickMatchSetup({ onCreated, orgId }: Props) {
           org_id: orgId ?? null, scorer_password: scorerPassword || null,
           chukker_duration_minutes: chukkerDuration, slug, app: 'futbol',
         })
-        .select().single()
+        .select('id, name, date, format, status, team_count, num_groups, has_third_place, org_id, slug').single()
       if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message)
       if (!tournament) throw new Error('INSERT torneo devolvió null')
 

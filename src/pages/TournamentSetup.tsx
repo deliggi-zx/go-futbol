@@ -179,7 +179,7 @@ function downloadTemplate() {
       const { data: tournament, error: tournamentError } = await supabase
         .from('tournaments')
         .insert({ id: tournamentId, name, date, periods_per_match: chukkers, status: 'setup', format, team_count: teamCount, num_groups: getGroupsConfig(teamCount, format).numGroups, has_third_place: hasThirdPlace, org_id: orgId ?? null, scorer_password: scorerPassword || null, chukker_duration_minutes: chukkerDuration, slug, app: 'futbol' })
-        .select().single()
+        .select('id, name, date, format, status, team_count, num_groups, has_third_place, org_id, slug').single()
       if (tournamentError) throw new Error('INSERT torneo: ' + tournamentError.message + ' code: ' + tournamentError.code)
       if (!tournament) throw new Error('INSERT torneo devolvió null')
 
