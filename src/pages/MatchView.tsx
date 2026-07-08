@@ -95,10 +95,15 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const soundOnRef = useRef(true)
 
   const [micOn, setMicOn] = useState(false)
-  const [narrationMuted, setNarrationMuted] = useState(false)
+  // Arranca muteado: todavía no hay conexión a Daily.co hasta que alguien
+  // toque mic (admin) o radio (espectador).
+  const [narrationMuted, setNarrationMuted] = useState(true)
+  const [dailyStatus, setDailyStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
+  const [dailyError, setDailyError] = useState<string | null>(null)
   const dailyCallRef = useRef<any>(null)
+  const dailyConnectPromiseRef = useRef<Promise<any | null> | null>(null)
   const micRequestedRef = useRef(false)
-  const narrationMutedRef = useRef(false)
+  const narrationMutedRef = useRef(true)
   const remoteAudioElsRef = useRef<HTMLAudioElement[]>([])
 
   const [clock, setClock] = useState<any | null>(null)
@@ -207,72 +212,98 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     return () => { supabase.removeChannel(channel) }
   }, [match.id])
 
-  // Relato en vivo (Daily.co): todos se unen como oyentes apenas se abre el
-  // partido, sin pedir permiso de microfono. El admin activa su microfono
-  // recien cuando toca el boton de relato.
-  useEffect(() => {
-    let cancelled = false
-    let call: any = null
+  // Relato en vivo (Daily.co): NO se conecta a la sala al abrir el partido.
+  // La conexión es bajo demanda — recién se dispara cuando el admin toca
+  // mic (para relatar) o un espectador toca radio (para escuchar). Si nadie
+  // toca ninguno de los dos, no hay ningún intento de red hacia Daily.co.
+  function attachRemoteAudio(event: any) {
+    if (event.participant?.local) return
+    if (event.track.kind !== 'audio') return
+    const audioEl = document.createElement('audio')
+    audioEl.autoplay = true
+    audioEl.muted = narrationMutedRef.current
+    audioEl.srcObject = new MediaStream([event.track])
+    remoteAudioElsRef.current.push(audioEl)
+  }
 
-    function attachRemoteAudio(event: any) {
-      if (event.participant?.local) return
-      if (event.track.kind !== 'audio') return
-      const audioEl = document.createElement('audio')
-      audioEl.autoplay = true
-      audioEl.muted = narrationMutedRef.current
-      audioEl.srcObject = new MediaStream([event.track])
-      remoteAudioElsRef.current.push(audioEl)
-    }
-
-    async function connect() {
-      const { data, error } = await supabase.functions.invoke('daily-room', {
-        body: { match_id: match.id, action: 'get-or-create' },
-      })
-      if (cancelled || error || !data?.url) return
-
-      call = Daily.createCallObject()
-      dailyCallRef.current = call
-      call.on('track-started', attachRemoteAudio)
+  // Conecta a la sala (ya creada de forma lazy por la Edge Function) la
+  // primera vez que se necesita, y reutiliza la misma conexión para mic y
+  // radio. Deduplica llamadas concurrentes con dailyConnectPromiseRef.
+  async function ensureDailyCall(): Promise<any | null> {
+    if (dailyCallRef.current) return dailyCallRef.current
+    if (dailyConnectPromiseRef.current) return dailyConnectPromiseRef.current
+    setDailyStatus('connecting')
+    setDailyError(null)
+    const promise = (async () => {
       try {
+        const { data, error } = await supabase.functions.invoke('daily-room', {
+          body: { match_id: match.id, action: 'get-or-create' },
+        })
+        if (error || !data?.url) throw new Error('No se pudo acceder a la sala de relato')
+        const call = Daily.createCallObject()
+        call.on('track-started', attachRemoteAudio)
         await call.join({ url: data.url, videoSource: false, audioSource: false })
+        dailyCallRef.current = call
+        setDailyStatus('connected')
+        return call
       } catch (e) {
-        // Silencioso: el relato en vivo es un extra, no debe romper la pantalla del partido.
+        setDailyStatus('error')
+        setDailyError('No se pudo conectar al relato en vivo. Tocá de nuevo para reintentar.')
+        return null
+      } finally {
+        dailyConnectPromiseRef.current = null
       }
-    }
+    })()
+    dailyConnectPromiseRef.current = promise
+    return promise
+  }
 
-    connect()
-
+  useEffect(() => {
     return () => {
-      cancelled = true
+      remoteAudioElsRef.current.forEach(el => { el.pause(); el.srcObject = null })
       remoteAudioElsRef.current = []
+      const call = dailyCallRef.current
       if (call) { call.leave().catch(() => {}); call.destroy().catch(() => {}) }
       dailyCallRef.current = null
+      dailyConnectPromiseRef.current = null
       micRequestedRef.current = false
     }
   }, [match.id])
 
   async function toggleMic() {
-    const call = dailyCallRef.current
+    if (micOn) {
+      dailyCallRef.current?.setLocalAudio(false)
+      setMicOn(false)
+      return
+    }
+    const call = await ensureDailyCall()
     if (!call) return
-    const next = !micOn
     try {
-      if (next && !micRequestedRef.current) {
+      if (!micRequestedRef.current) {
         await call.setInputDevicesAsync({ audioSource: true })
         micRequestedRef.current = true
       } else {
-        call.setLocalAudio(next)
+        call.setLocalAudio(true)
       }
-      setMicOn(next)
+      setMicOn(true)
     } catch (e) {
-      alert('No se pudo activar el micrófono. Revisá el permiso del navegador.')
+      setDailyStatus('error')
+      setDailyError('No se pudo activar el micrófono. Revisá el permiso del navegador.')
     }
   }
 
-  function toggleNarrationMuted() {
-    const next = !narrationMuted
-    narrationMutedRef.current = next
-    remoteAudioElsRef.current.forEach((el) => { el.muted = next })
-    setNarrationMuted(next)
+  async function toggleNarrationMuted() {
+    if (!narrationMuted) {
+      narrationMutedRef.current = true
+      remoteAudioElsRef.current.forEach((el) => { el.muted = true })
+      setNarrationMuted(true)
+      return
+    }
+    const call = await ensureDailyCall()
+    if (!call) return
+    narrationMutedRef.current = false
+    remoteAudioElsRef.current.forEach((el) => { el.muted = false })
+    setNarrationMuted(false)
   }
 
   async function closeDailyRoom() {
@@ -715,14 +746,19 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 </button>
                 <button
                   onClick={toggleMic}
-                  title={micOn ? 'Dejar de relatar' : 'Relatar en vivo'}
+                  title={micOn ? 'Dejar de relatar' : dailyStatus === 'error' ? `${dailyError} (tocá para reintentar)` : dailyStatus === 'connecting' ? 'Conectando…' : 'Relatar en vivo'}
                   style={{
+                    position: 'relative' as const,
                     background: micOn ? 'rgba(220,38,38,0.25)' : 'rgba(0,0,0,0.5)',
                     border: `1px solid ${micOn ? '#ef4444' : gold + '66'}`,
                     borderRadius: 8, padding: '4px 10px', color: micOn ? '#ef4444' : gold, cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    opacity: dailyStatus === 'connecting' ? 0.6 : 1,
                   }}
                 >
                   <MicVocal size={15} />
+                  {dailyStatus === 'error' && !micOn && (
+                    <span style={{ position: 'absolute' as const, top: -4, right: -4, background: '#ef4444', color: '#fff', borderRadius: '50%', width: 14, height: 14, fontSize: 10, lineHeight: '14px', textAlign: 'center' as const, fontWeight: 700 }}>!</span>
+                  )}
                 </button>
                 <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <img src="/icons/silbato.png" alt="Silbato" style={{ width: 16, height: 16, objectFit: 'contain' as const }} />
@@ -734,10 +770,13 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             )}
             <button
               onClick={toggleNarrationMuted}
-              title={narrationMuted ? 'Activar relato en vivo' : 'Silenciar relato en vivo'}
-              style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: narrationMuted ? '#666' : gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              title={!narrationMuted ? 'Silenciar relato en vivo' : dailyStatus === 'error' ? `${dailyError} (tocá para reintentar)` : dailyStatus === 'connecting' ? 'Conectando…' : 'Escuchar relato en vivo'}
+              style={{ position: 'relative' as const, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: narrationMuted ? '#666' : gold, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: dailyStatus === 'connecting' ? 0.6 : 1 }}
             >
               <Radio size={15} />
+              {dailyStatus === 'error' && narrationMuted && (
+                <span style={{ position: 'absolute' as const, top: -4, right: -4, background: '#ef4444', color: '#fff', borderRadius: '50%', width: 14, height: 14, fontSize: 10, lineHeight: '14px', textAlign: 'center' as const, fontWeight: 700 }}>!</span>
+              )}
             </button>
             <button onClick={() => { const next = !soundOn; soundOnRef.current = next; setSoundOn(next) }} style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', fontSize: 14 }}>
               {soundOn ? '🔔' : '🔕'}
