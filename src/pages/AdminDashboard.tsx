@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import TournamentSetup from './TournamentSetup'
+import QuickMatchSetup from './QuickMatchSetup'
 
 type Props = { org: any; onLogout: () => void }
 
 export default function AdminDashboard({ org, onLogout }: Props) {
+  const navigate = useNavigate()
   const [tournaments, setTournaments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [screen, setScreen] = useState<'dashboard' | 'setup'>('dashboard')
+  const [screen, setScreen] = useState<'dashboard' | 'setup' | 'quickmatch'>('dashboard')
   const [showChangePassword, setShowChangePassword] = useState(!org.password_changed)
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -65,6 +68,15 @@ export default function AdminDashboard({ org, onLogout }: Props) {
       onCreated={() => {
         loadTournaments()
         setScreen('dashboard')
+      }}
+      orgId={org.id}
+    />
+  }
+
+  if (screen === 'quickmatch') {
+    return <QuickMatchSetup
+      onCreated={(tournament, matchId) => {
+        navigate(`/t/${tournament.slug}?match=${matchId}`)
       }}
       orgId={org.id}
     />
@@ -155,11 +167,16 @@ export default function AdminDashboard({ org, onLogout }: Props) {
               )}
             </div>
 
-            {/* Botón crear torneo */}
+            {/* Botones crear torneo / partido suelto */}
             {canCreate && (
-              <button style={{ ...styles.btn('#C9A84C'), width: '100%', marginBottom: 20 }} onClick={() => setScreen('setup')}>
-                + Crear nuevo torneo
-              </button>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+                <button style={{ ...styles.btn('#C9A84C'), flex: 1 }} onClick={() => setScreen('setup')}>
+                  + Crear torneo
+                </button>
+                <button style={{ ...styles.btn('#1A6B35'), flex: 1 }} onClick={() => setScreen('quickmatch')}>
+                  ⚽ Cargar partido suelto
+                </button>
+              </div>
             )}
 
             {/* Lista de torneos */}

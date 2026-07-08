@@ -47,7 +47,9 @@ function timeOnDate(iso: string | null, dateStr: string): string {
 
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'fixture' | 'schedule' | 'standings' | 'stats' | 'teams' | 'awards'>('fixture')
+  const [tab, setTab] = useState<'fixture' | 'schedule' | 'standings' | 'stats' | 'teams' | 'awards'>(
+    () => tournament.format === 'partido_unico' ? 'teams' : 'fixture'
+  )
   const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set())
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTimes, setScheduleTimes] = useState<Record<string, string>>({})
@@ -840,12 +842,14 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             {new Date(tournament.date).toLocaleDateString('es-AR')} · {tournament.periods_per_match} tiempos
           </p>
 
-          <button
-            onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
-            style={{ background: 'rgba(201,168,76,0.12)', border: `1px solid ${gold}55`, borderRadius: 8, padding: '7px 16px', color: gold, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif', letterSpacing: 1, marginBottom: 10, alignSelf: 'flex-start' }}
-          >
-            🏆 Ver Bracket
-          </button>
+          {tournament.format !== 'partido_unico' && (
+            <button
+              onClick={() => navigate(`/tournament/${tournament.id}/bracket`)}
+              style={{ background: 'rgba(201,168,76,0.12)', border: `1px solid ${gold}55`, borderRadius: 8, padding: '7px 16px', color: gold, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif', letterSpacing: 1, marginBottom: 10, alignSelf: 'flex-start' }}
+            >
+              🏆 Ver Bracket
+            </button>
+          )}
 
           {/* Botones admin */}
           {isAdmin && (
@@ -868,17 +872,31 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
               <button style={{ flex: 1, ...styles.adminBtn, fontSize: 12 }} onClick={onReset}>
                 Nuevo torneo
               </button>
-              <button style={{ flex: 1, background: 'linear-gradient(135deg, #1e3a8a, #1e40af)', color: '#93c5fd', border: '1px solid #3b82f666', borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif' }} onClick={() => setShowFixtureManager(true)}>
-                Fixture
-              </button>
+              {tournament.format !== 'partido_unico' && (
+                <button style={{ flex: 1, background: 'linear-gradient(135deg, #1e3a8a, #1e40af)', color: '#93c5fd', border: '1px solid #3b82f666', borderRadius: 8, padding: '8px', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: 'Georgia, serif' }} onClick={() => setShowFixtureManager(true)}>
+                  Fixture
+                </button>
+              )}
             </div>
           )}
         </div>
       </div>
 
+      {/* Partido suelto: el partido queda siempre visible arriba, sin pasar
+          por las tabs de Fixture/Cronograma/Premios (no aplican con 1 solo partido). */}
+      {tournament.format === 'partido_unico' && matches[0] && (
+        <div style={{ padding: '16px 16px 0', maxWidth: 600, margin: '0 auto' }}>
+          <p style={styles.sectionLabel}>PARTIDO</p>
+          <MatchCard match={matches[0]} />
+        </div>
+      )}
+
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'rgba(30,5,15,0.95)', borderBottom: `1px solid ${gold}44`, overflowX: 'auto' as const }}>
-        {(['fixture', 'schedule', 'standings', 'stats', 'teams', 'awards'] as const).map(t => (
+        {(tournament.format === 'partido_unico'
+          ? ['standings', 'stats', 'teams'] as const
+          : ['fixture', 'schedule', 'standings', 'stats', 'teams', 'awards'] as const
+        ).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             flex: 1, padding: '13px 6px', textAlign: 'center' as const, cursor: 'pointer',
             fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 1,
