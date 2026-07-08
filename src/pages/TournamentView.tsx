@@ -221,9 +221,16 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   }
 
   function getAllTeamStandings() {
+    // partido_unico no tiene fase de grupos — su único partido queda con
+    // stage:'final', así que hay que contarlo acá también (sin afectar el
+    // resto de los formatos, donde 'final' es la final de eliminación
+    // directa y no debe sumar a la tabla de posiciones de grupo).
+    const isEligible = tournament.format === 'partido_unico'
+      ? (m: any) => m.stage === 'final'
+      : (m: any) => m.stage === 'group'
     return teams.map(team => {
       const teamMatches = matches.filter(m =>
-        m.stage === 'group' && m.status === 'finished' &&
+        isEligible(m) && m.status === 'finished' &&
         (m.team_home_id === team.id || m.team_away_id === team.id)
       )
       let pts = 0, gf = 0, gc = 0, w = 0, l = 0, d = 0
@@ -704,6 +711,37 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   // equipos). Muestra el estado ("esperando rival" / "pase libre") y, para
   // el admin, las acciones para decidirlo o deshacerlo mientras la ronda
   // siguiente todavía no exista.
+  function StandingsTable({ label, standing }: { label: string; standing: any[] }) {
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <p style={styles.sectionLabel}>{label}</p>
+        <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+          {goldBar}
+          <div style={{ background: cardBg }}>
+            <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 12, padding: '8px 14px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              <span style={{ flex: 1 }}>Equipo</span>
+              {['PJ', 'G', 'E', 'P', 'GF', 'GC'].map(h => <span key={h} style={{ width: 28, textAlign: 'center' as const }}>{h}</span>)}
+              <span style={{ width: 36, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>PTS</span>
+            </div>
+            {standing.map((team, i) => (
+              <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, background: i < 2 ? `rgba(201,168,76,0.07)` : 'transparent' }}>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Avatar url={team.logo_url} name={team.name} size={26} />
+                  <span style={{ fontWeight: i < 2 ? 700 : 400, fontFamily: 'Georgia, serif', fontSize: 13 }}>{i < 2 ? '→ ' : ''}{team.name}</span>
+                </div>
+                {[team.pj, team.w, team.d, team.l, team.gf, team.gc].map((val, idx) => (
+                  <span key={idx} style={{ width: 28, textAlign: 'center' as const, color: '#a8d5b5', fontSize: 13 }}>{val}</span>
+                ))}
+                <span style={{ width: 36, textAlign: 'center' as const, fontWeight: 900, color: gold, fontSize: 15, fontFamily: 'Georgia, serif' }}>{team.pts}</span>
+              </div>
+            ))}
+          </div>
+          {goldBar}
+        </div>
+      </div>
+    )
+  }
+
   function WaitingMatchCard({ match }: { match: any }) {
     const isPaseLibre = match.status === 'finished' && !match.team_away_id
     const isAssigned = !!match.team_away_id
@@ -1112,37 +1150,11 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
           /* ── POSICIONES ── */
           ) : tab === 'standings' ? (
             <>
-              {tournament.format !== 'knockout' && groups.map(group => {
-                const standing = getStandings(group)
-                return (
-                  <div key={group} style={{ marginBottom: 24 }}>
-                    <p style={styles.sectionLabel}>GRUPO {group}</p>
-                    <div style={{ borderRadius: 14, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
-                      {goldBar}
-                      <div style={{ background: cardBg }}>
-                        <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 12, padding: '8px 14px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                          <span style={{ flex: 1 }}>Equipo</span>
-                          {['PJ','G','E','P','GF','GC'].map(h => <span key={h} style={{ width: 28, textAlign: 'center' as const }}>{h}</span>)}
-                          <span style={{ width: 36, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>PTS</span>
-                        </div>
-                        {standing.map((team, i) => (
-                          <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', borderBottom: `1px solid ${gold}22`, background: i < 2 ? `rgba(201,168,76,0.07)` : 'transparent' }}>
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <Avatar url={team.logo_url} name={team.name} size={26} />
-                              <span style={{ fontWeight: i < 2 ? 700 : 400, fontFamily: 'Georgia, serif', fontSize: 13 }}>{i < 2 ? '→ ' : ''}{team.name}</span>
-                            </div>
-                            {[team.pj, team.w, team.d, team.l, team.gf, team.gc].map((val, idx) => (
-                              <span key={idx} style={{ width: 28, textAlign: 'center' as const, color: '#a8d5b5', fontSize: 13 }}>{val}</span>
-                            ))}
-                            <span style={{ width: 36, textAlign: 'center' as const, fontWeight: 900, color: gold, fontSize: 15, fontFamily: 'Georgia, serif' }}>{team.pts}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {goldBar}
-                    </div>
-                  </div>
-                )
-              })}
+              {tournament.format === 'partido_unico' ? (
+                <StandingsTable label="PARTIDO" standing={getAllTeamStandings()} />
+              ) : tournament.format !== 'knockout' && groups.map(group => (
+                <StandingsTable key={group} label={`GRUPO ${group}`} standing={getStandings(group)} />
+              ))}
             </>
 
           /* ── STATS ── */
