@@ -20,9 +20,6 @@ const FORMATS = [
 ]
 
 const TEAM_COUNTS = [4, 6, 8, 10, 12, 16, 24, 32, 48]
-// Eliminación directa pura no maneja "byes": solo potencias de 2 arman un
-// cuadro parejo sin equipos que descansen la primera ronda.
-const TEAM_COUNTS_KNOCKOUT = [4, 8, 16, 32]
 
 function getGroupsConfig(teamCount: number, format: string): { numGroups: number; groupNames: string[] } {
   if (format === 'round_robin' || format === 'knockout') {
@@ -65,12 +62,10 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
   }
 
   function handleFormatChange(f: string) {
-    const nextTeamCount = f === 'knockout' && !TEAM_COUNTS_KNOCKOUT.includes(teamCount) ? 8 : teamCount
     setFormat(f)
-    if (nextTeamCount !== teamCount) setTeamCount(nextTeamCount)
-    const { groupNames } = getGroupsConfig(nextTeamCount, f)
-    const newTeams = Array.from({ length: nextTeamCount }, (_, i) => {
-      const groupIndex = Math.floor(i / Math.ceil(nextTeamCount / groupNames.length))
+    const { groupNames } = getGroupsConfig(teamCount, f)
+    const newTeams = Array.from({ length: teamCount }, (_, i) => {
+      const groupIndex = Math.floor(i / Math.ceil(teamCount / groupNames.length))
       return { ...teams[i] ?? emptyTeam(), group: groupNames[Math.min(groupIndex, groupNames.length - 1)] }
     })
     setTeams(newTeams)
@@ -244,17 +239,28 @@ function downloadTemplate() {
     } else if (fmt === 'knockout') {
       const { data: savedTeams } = await supabase.from('teams').select('id').eq('tournament_id', tournamentId).eq('app', 'futbol').order('created_at', { ascending: true })
       if (!savedTeams) return
-      for (let i = 0; i < savedTeams.length; i += 2) {
-        if (i + 1 < savedTeams.length) {
-          await supabase.from('matches').insert({
-            tournament_id: tournamentId,
-            team_home_id: savedTeams[i].id,
-            team_away_id: savedTeams[i + 1].id,
-            stage: savedTeams.length === 2 ? 'final' : savedTeams.length === 4 ? 'semi' : 'quarter',
-            status: 'pending', round: 1, match_number: i / 2 + 1, app: 'futbol',
-          })
-        }
+      const pairCount = Math.floor(savedTeams.length / 2)
+      const stage = savedTeams.length <= 2 ? 'final' : savedTeams.length <= 4 ? 'semi' : 'quarter'
+      const inserts: any[] = []
+      for (let i = 0; i < pairCount; i++) {
+        inserts.push({
+          tournament_id: tournamentId,
+          team_home_id: savedTeams[i * 2].id,
+          team_away_id: savedTeams[i * 2 + 1].id,
+          stage, status: 'pending', round: 1, match_number: i + 1, app: 'futbol',
+        })
       }
+      // Cantidad impar: el equipo sobrante queda "esperando rival" — el admin
+      // decide más tarde si le asigna un rival o le da pase libre.
+      if (savedTeams.length % 2 === 1) {
+        inserts.push({
+          tournament_id: tournamentId,
+          team_home_id: savedTeams[savedTeams.length - 1].id,
+          team_away_id: null,
+          stage, status: 'pending', round: 1, match_number: pairCount + 1, is_bye_slot: true, app: 'futbol',
+        })
+      }
+      if (inserts.length > 0) await supabase.from('matches').insert(inserts)
     } else {
       // groups_knockout — formato actual
       const groups = [...new Set(activeTeams.map(t => t.group))]
@@ -333,18 +339,23 @@ function downloadTemplate() {
           <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4 }}>Compartila con quienes van a cargar goles el día del torneo</p>
 
           <label style={{ ...styles.label, marginTop: 16 }}>Cantidad de equipos</label>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
-            {(format === 'knockout' ? TEAM_COUNTS_KNOCKOUT : TEAM_COUNTS).map(n => (
-              <button key={n} onClick={() => handleTeamCountChange(n)}
-                style={{ ...styles.btnSm, background: teamCount === n ? '#C9A84C' : '#1A6B35', color: teamCount === n ? '#0D4F28' : '#fff', marginTop: 0, padding: '8px 14px' }}>
-                {n}
-              </button>
-            ))}
-          </div>
-          {format === 'knockout' && (
-            <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: -4, marginBottom: 8 }}>
-              Eliminación directa pura solo admite potencias de 2, para que el cuadro cierre parejo sin "byes".
-            </p>
+          {format === 'knockout' ? (
+            <>
+              <input style={{ ...styles.input, maxWidth: 120 }} type="number" min={3} value={teamCount}
+                onChange={e => handleTeamCountChange(Math.max(3, Number(e.target.value) || 3))} />
+              <p style={{ color: '#a8d5b5', fontSize: 11, marginTop: 4, marginBottom: 8 }}>
+                Mínimo 3 equipos. Con cantidad impar, un equipo por ronda queda "esperando rival" hasta que el admin le asigne uno o le dé pase libre.
+              </p>
+            </>
+          ) : (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const, marginBottom: 8 }}>
+              {TEAM_COUNTS.map(n => (
+                <button key={n} onClick={() => handleTeamCountChange(n)}
+                  style={{ ...styles.btnSm, background: teamCount === n ? '#C9A84C' : '#1A6B35', color: teamCount === n ? '#0D4F28' : '#fff', marginTop: 0, padding: '8px 14px' }}>
+                  {n}
+                </button>
+              ))}
+            </div>
           )}
 
           <label style={{ ...styles.label, marginTop: 16 }}>Formato del torneo</label>

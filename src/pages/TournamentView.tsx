@@ -66,6 +66,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
   const [cards, setCards] = useState<any[]>([])
   const [visitorsNow, setVisitorsNow] = useState(0)
   const [totalVisits, setTotalVisits] = useState(0)
+  const [waitingPickerMatchId, setWaitingPickerMatchId] = useState<string | null>(null)
 
   async function handleScorerLogin() {
     const pwd = prompt('Contraseña de cargador:')
@@ -291,27 +292,47 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
       .sort((a: any, b: any) => a.match_number - b.match_number)
     if (!currentRoundMatches.every((m: any) => m.winner_id)) return
 
+    const winners = currentRoundMatches.map((m: any) => m.winner_id)
     const nextRound = currentRound + 1
-    const nextMatchCount = currentRoundMatches.length / 2
-    const nextStage = nextMatchCount === 1 ? 'final' : nextMatchCount === 2 ? 'semi' : 'quarter'
+    const pairCount = Math.floor(winners.length / 2)
+    const hasOddOneOut = winners.length % 2 === 1
+    const nextStage = pairCount <= 1 ? 'final' : pairCount === 2 ? 'semi' : 'quarter'
 
-    const inserts = []
-    for (let i = 0; i < currentRoundMatches.length; i += 2) {
+    const inserts: any[] = []
+    for (let i = 0; i < pairCount; i++) {
       inserts.push({
         tournament_id: tournament.id,
-        team_home_id: currentRoundMatches[i].winner_id,
-        team_away_id: currentRoundMatches[i + 1].winner_id,
+        team_home_id: winners[i * 2],
+        team_away_id: winners[i * 2 + 1],
         stage: nextStage,
         status: 'pending',
         round: nextRound,
-        match_number: i / 2 + 1,
+        match_number: i + 1,
+        app: 'futbol',
+      })
+    }
+    // Cantidad impar de ganadores: el que sobra queda "esperando rival" en la
+    // ronda siguiente — se puede repetir en más de una ronda.
+    if (hasOddOneOut) {
+      inserts.push({
+        tournament_id: tournament.id,
+        team_home_id: winners[winners.length - 1],
+        team_away_id: null,
+        stage: nextStage,
+        status: 'pending',
+        round: nextRound,
+        match_number: pairCount + 1,
+        is_bye_slot: true,
         app: 'futbol',
       })
     }
     await supabase.from('matches').insert(inserts)
 
-    // Generar 3er/4to puesto con los PERDEDORES de las semis, al avanzar a la final
-    if (nextStage === 'final' && tournament.has_third_place) {
+    // Generar 3er/4to puesto con los PERDEDORES de las semis, al avanzar a la
+    // final real (no si todavía queda un equipo esperando rival, ni si algún
+    // partido de esta ronda fue un pase libre — ahí no hay "perdedor" real).
+    const allRealMatches = currentRoundMatches.every((m: any) => m.team_home_id && m.team_away_id)
+    if (nextStage === 'final' && !hasOddOneOut && allRealMatches && tournament.has_third_place) {
       const losers = currentRoundMatches.map((m: any) =>
         m.winner_id === m.team_home_id ? m.team_away_id : m.team_home_id
       )
@@ -327,6 +348,74 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         app: 'futbol',
       })
     }
+    loadData()
+  }
+
+  // ── Equipo "esperando rival" (cantidad impar de equipos en la ronda) ──
+  // Pool para "Asignar rival": equipos libres de esta ronda + equipos ya
+  // eliminados en rondas anteriores de este torneo (repechaje). Es una
+  // decisión manual del admin, caso por caso — nada se asigna solo.
+  function getWaitingMatchOptions(waitingMatch: any): { free: any[]; eliminated: any[] } {
+    const nonTP = matches.filter((m: any) => m.round != null && !m.is_third_place)
+    const round = waitingMatch.round
+    const thisRoundMatches = nonTP.filter((m: any) => m.round === round)
+
+    // Roster de la ronda: para la ronda 1, todo el plantel del torneo; para
+    // rondas siguientes, los ganadores de la ronda anterior.
+    const rosterIds = round === 1
+      ? teams.map((t: any) => t.id)
+      : nonTP.filter((m: any) => m.round === round - 1).map((m: any) => m.winner_id).filter(Boolean)
+
+    const occupiedIds = new Set<string>()
+    thisRoundMatches.forEach((m: any) => {
+      if (m.team_home_id) occupiedIds.add(m.team_home_id)
+      if (m.team_away_id) occupiedIds.add(m.team_away_id)
+    })
+    const freeIds = rosterIds.filter((id: string) => !occupiedIds.has(id))
+
+    // Perdedores de partidos reales y finalizados en rondas anteriores que
+    // todavía no están ocupados en esta ronda ni en ninguna posterior.
+    const eliminatedIds = new Set<string>()
+    nonTP.forEach((m: any) => {
+      if (m.round < round && m.status === 'finished' && m.team_home_id && m.team_away_id && m.winner_id) {
+        eliminatedIds.add(m.winner_id === m.team_home_id ? m.team_away_id : m.team_home_id)
+      }
+    })
+    nonTP.forEach((m: any) => {
+      if (m.round >= round) {
+        if (m.team_home_id) eliminatedIds.delete(m.team_home_id)
+        if (m.team_away_id) eliminatedIds.delete(m.team_away_id)
+      }
+    })
+
+    const byId = (id: string) => teams.find((t: any) => t.id === id)
+    return {
+      free: freeIds.map(byId).filter(Boolean),
+      eliminated: Array.from(eliminatedIds).map(byId).filter(Boolean),
+    }
+  }
+
+  function nextRoundExistsFor(round: number): boolean {
+    return matches.some((m: any) => m.round === round + 1 && !m.is_third_place)
+  }
+
+  async function assignRivalToWaitingMatch(matchId: string, rivalTeamId: string) {
+    await supabase.from('matches').update({ team_away_id: rivalTeamId }).eq('id', matchId)
+    loadData()
+  }
+
+  async function undoAssignRival(matchId: string) {
+    await supabase.from('matches').update({ team_away_id: null }).eq('id', matchId)
+    loadData()
+  }
+
+  async function grantByeAdvance(matchId: string, teamId: string) {
+    await supabase.from('matches').update({ status: 'finished', winner_id: teamId, played_at: new Date().toISOString() }).eq('id', matchId)
+    loadData()
+  }
+
+  async function undoByeAdvance(matchId: string) {
+    await supabase.from('matches').update({ status: 'pending', winner_id: null, played_at: null }).eq('id', matchId)
     loadData()
   }
 
@@ -609,6 +698,115 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
     )
   }
 
+  // Equipo sin par en una ronda de eliminación directa (cantidad impar de
+  // equipos). Muestra el estado ("esperando rival" / "pase libre") y, para
+  // el admin, las acciones para decidirlo o deshacerlo mientras la ronda
+  // siguiente todavía no exista.
+  function WaitingMatchCard({ match }: { match: any }) {
+    const isPaseLibre = match.status === 'finished' && !match.team_away_id
+    const isAssigned = !!match.team_away_id
+    const canEdit = isAdmin && !nextRoundExistsFor(match.round)
+    const pickerOpen = waitingPickerMatchId === match.id
+
+    const actionBtn = (bg: string, color: string) => ({
+      background: bg, color, border: 'none', borderRadius: 8, padding: '8px 14px',
+      cursor: 'pointer', fontWeight: 700, fontSize: 12, fontFamily: 'Georgia, serif',
+    })
+
+    if (isAssigned) {
+      return (
+        <div>
+          <MatchCard match={match} />
+          {canEdit && match.status === 'pending' && (
+            <button onClick={() => undoAssignRival(match.id)} style={{ ...actionBtn('transparent', `${gold}99`), border: `1px solid ${gold}44`, width: '100%', marginTop: -4, marginBottom: 10 }}>
+              ↩ Deshacer asignación de rival
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ borderRadius: 14, marginBottom: 10, overflow: 'hidden', boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+        {goldBar}
+        <div style={{ background: cardBg, padding: '12px 14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={stageBadge(match.stage)}>{knockoutRoundLabel(match, knockoutTeamCount)}</span>
+            <span style={{ ...statusBadge(match.status), background: isPaseLibre ? '#7e22ce' : '#334155' }}>
+              {isPaseLibre ? 'PASE LIBRE' : 'ESPERANDO RIVAL'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Avatar url={match.team_home?.logo_url} name={match.team_home?.name ?? '?'} size={32} />
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Georgia, serif', color: '#fff' }}>{match.team_home?.name}</span>
+            <span style={{ marginLeft: 'auto', color: '#a8d5b5', fontSize: 12, fontFamily: 'Georgia, serif' }}>
+              {isPaseLibre ? 'avanza sin jugar' : 'sin rival todavía'}
+            </span>
+          </div>
+
+          {canEdit && isPaseLibre && (
+            <button onClick={() => undoByeAdvance(match.id)} style={{ ...actionBtn(`${gold}22`, gold), border: `1px solid ${gold}66`, width: '100%' }}>
+              ↩ Deshacer pase libre
+            </button>
+          )}
+
+          {canEdit && !isPaseLibre && !pickerOpen && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => setWaitingPickerMatchId(match.id)} style={{ ...actionBtn(`${gold}22`, gold), border: `1px solid ${gold}66`, flex: 1 }}>
+                Asignar rival
+              </button>
+              <button onClick={() => grantByeAdvance(match.id, match.team_home_id)} style={{ ...actionBtn('linear-gradient(135deg, #0d3320, #166534)', '#4ade80'), border: '1px solid #4ade8066', flex: 1 }}>
+                Dar pase libre
+              </button>
+            </div>
+          )}
+
+          {canEdit && !isPaseLibre && pickerOpen && (() => {
+            const { free, eliminated } = getWaitingMatchOptions(match)
+            return (
+              <div>
+                {free.length === 0 && eliminated.length === 0 && (
+                  <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 8px' }}>
+                    No hay equipos libres ni eliminados para asignar todavía — podés dar pase libre en su lugar.
+                  </p>
+                )}
+                {free.length > 0 && (
+                  <>
+                    <p style={{ color: gold, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: '0 0 6px' }}>LIBRES</p>
+                    {free.map((t: any) => (
+                      <button key={t.id} onClick={() => { assignRivalToWaitingMatch(match.id, t.id); setWaitingPickerMatchId(null) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.4)', border: `1px solid ${gold}44`, borderRadius: 10, padding: '8px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, fontFamily: 'Georgia, serif' }}>
+                        <Avatar url={t.logo_url} name={t.name} size={26} />
+                        {t.name}
+                      </button>
+                    ))}
+                  </>
+                )}
+                {eliminated.length > 0 && (
+                  <>
+                    <p style={{ color: gold, fontSize: 11, fontWeight: 700, letterSpacing: 1, margin: '8px 0 6px' }}>ELIMINADOS (REPECHAJE)</p>
+                    {eliminated.map((t: any) => (
+                      <button key={t.id} onClick={() => { assignRivalToWaitingMatch(match.id, t.id); setWaitingPickerMatchId(null) }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.4)', border: '1px solid #ef444444', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const, fontFamily: 'Georgia, serif' }}>
+                        <Avatar url={t.logo_url} name={t.name} size={26} />
+                        {t.name}
+                        <span style={{ marginLeft: 'auto', color: '#ef4444', fontSize: 10 }}>eliminado</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+                <button onClick={() => setWaitingPickerMatchId(null)} style={{ ...actionBtn('transparent', `${gold}99`), border: `1px solid ${gold}33`, width: '100%', marginTop: 4 }}>
+                  Cancelar
+                </button>
+              </div>
+            )
+          })()}
+        </div>
+        {goldBar}
+      </div>
+    )
+  }
+
   return (
     <div style={styles.container}>
 
@@ -727,7 +925,9 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                       <>
                         <p style={styles.sectionLabel}>ELIMINACIÓN DIRECTA</p>
                         {flatMatches.map(match => (
-                          <MatchCard key={match.id} match={match} />
+                          match.is_bye_slot
+                            ? <WaitingMatchCard key={match.id} match={match} />
+                            : <MatchCard key={match.id} match={match} />
                         ))}
                       </>
                     )}
@@ -749,7 +949,9 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                             {!isLatest && <span style={{ marginLeft: 6, fontSize: 10 }}>{isOpen ? '▲' : '▼'}</span>}
                           </p>
                           {isOpen && roundMatches.map(match => (
-                            <MatchCard key={match.id} match={match} />
+                            match.is_bye_slot
+                              ? <WaitingMatchCard key={match.id} match={match} />
+                              : <MatchCard key={match.id} match={match} />
                           ))}
                         </div>
                       )
