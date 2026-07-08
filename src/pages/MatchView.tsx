@@ -102,6 +102,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [dailyError, setDailyError] = useState<string | null>(null)
   const dailyCallRef = useRef<any>(null)
   const dailyConnectPromiseRef = useRef<Promise<any | null> | null>(null)
+  const dailyIntentionalLeaveRef = useRef(false)
   const micRequestedRef = useRef(false)
   const narrationMutedRef = useRef(true)
   const remoteAudioElsRef = useRef<HTMLAudioElement[]>([])
@@ -226,6 +227,25 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     remoteAudioElsRef.current.push(audioEl)
   }
 
+  // Se llama cuando la sala se cae DESPUES de haber conectado con éxito
+  // (sala expirada del lado de Daily, corte de red, etc.) — no cuando
+  // nosotros mismos cortamos la llamada al cerrar la pantalla, eso lo marca
+  // dailyIntentionalLeaveRef para no mostrar un error de una salida a propósito.
+  function handleDailyDisconnect() {
+    if (dailyIntentionalLeaveRef.current) return
+    const call = dailyCallRef.current
+    if (call) call.destroy().catch(() => {})
+    dailyCallRef.current = null
+    micRequestedRef.current = false
+    remoteAudioElsRef.current.forEach(el => { el.pause(); el.srcObject = null })
+    remoteAudioElsRef.current = []
+    narrationMutedRef.current = true
+    setMicOn(false)
+    setNarrationMuted(true)
+    setDailyStatus('error')
+    setDailyError('Se perdió la conexión al relato en vivo. Tocá de nuevo para reintentar.')
+  }
+
   // Conecta a la sala (ya creada de forma lazy por la Edge Function) la
   // primera vez que se necesita, y reutiliza la misma conexión para mic y
   // radio. Deduplica llamadas concurrentes con dailyConnectPromiseRef.
@@ -242,7 +262,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
         if (error || !data?.url) throw new Error('No se pudo acceder a la sala de relato')
         const call = Daily.createCallObject()
         call.on('track-started', attachRemoteAudio)
+        call.on('error', handleDailyDisconnect)
+        call.on('left-meeting', handleDailyDisconnect)
         await call.join({ url: data.url, videoSource: false, audioSource: false })
+        dailyIntentionalLeaveRef.current = false
         dailyCallRef.current = call
         setDailyStatus('connected')
         return call
@@ -263,7 +286,10 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       remoteAudioElsRef.current.forEach(el => { el.pause(); el.srcObject = null })
       remoteAudioElsRef.current = []
       const call = dailyCallRef.current
-      if (call) { call.leave().catch(() => {}); call.destroy().catch(() => {}) }
+      if (call) {
+        dailyIntentionalLeaveRef.current = true
+        call.leave().catch(() => {}); call.destroy().catch(() => {})
+      }
       dailyCallRef.current = null
       dailyConnectPromiseRef.current = null
       micRequestedRef.current = false

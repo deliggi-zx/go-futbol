@@ -56,7 +56,23 @@ serve(async (req) => {
     }
 
     // action: 'get-or-create'
-    if (match.daily_room_url) return jsonResponse({ url: match.daily_room_url })
+    // No confío ciegamente en la URL cacheada: la sala vence a las 6hs
+    // (eject_at_room_exp) pero Daily la sigue devolviendo por GET aunque ya
+    // esté vencida, así que hay que chequear el exp antes de reusarla.
+    if (match.daily_room_url) {
+      const checkRes = await fetch(`${DAILY_API_BASE}/rooms/${roomName}`, { headers: dailyHeaders })
+      if (checkRes.ok) {
+        const roomInfo = await checkRes.json()
+        const exp = roomInfo?.config?.exp
+        const stillAlive = typeof exp !== 'number' || exp > Math.floor(Date.now() / 1000)
+        if (stillAlive) return jsonResponse({ url: match.daily_room_url })
+      }
+      // Vencida o ya no existe en Daily: no confío en la URL cacheada. Borro
+      // lo que quede antes de crear una sala nueva con el mismo nombre
+      // determinístico.
+      await fetch(`${DAILY_API_BASE}/rooms/${roomName}`, { method: 'DELETE', headers: dailyHeaders }).catch(() => {})
+      await supabaseAdmin.from('matches').update({ daily_room_url: null }).eq('id', match_id)
+    }
 
     const expSeconds = Math.floor(Date.now() / 1000) + 6 * 60 * 60 // 6 horas de margen
 
