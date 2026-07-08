@@ -8,6 +8,13 @@ const corsHeaders = {
 
 const DAILY_API_BASE = 'https://api.daily.co/v1'
 
+// Tope de salas NUEVAS creadas en la ventana de tiempo (no cuenta los
+// get-or-create que sirven la sala ya cacheada — solo el POST real a
+// Daily.co, que es lo que factura). Uso muy generoso para uso legítimo,
+// bajo para un intento de abuso con matches fabricados.
+const RATE_LIMIT_WINDOW_MINUTES = 10
+const RATE_LIMIT_MAX_CREATIONS = 15
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -39,7 +46,7 @@ serve(async (req) => {
 
     const { data: match, error: matchError } = await supabaseAdmin
       .from('matches')
-      .select('id, daily_room_url')
+      .select('id, daily_room_url, tournament_id')
       .eq('id', match_id)
       .single()
 
@@ -48,6 +55,24 @@ serve(async (req) => {
     const roomName = roomNameFor(match_id)
 
     if (action === 'close') {
+      // Solo el dueño de la organización del torneo puede cerrar la sala —
+      // sin esto, cualquiera con la anon key podía cortarle el relato en
+      // vivo a un partido ajeno pasándole su match_id.
+      const authHeader = req.headers.get('Authorization')
+      const token = authHeader?.replace('Bearer ', '') ?? ''
+      const { data: { user } } = await supabaseAdmin.auth.getUser(token)
+
+      let isOwner = false
+      if (user && match.tournament_id) {
+        const { data: tournament } = await supabaseAdmin
+          .from('tournaments')
+          .select('org_id, organizations(owner_id)')
+          .eq('id', match.tournament_id)
+          .single()
+        isOwner = (tournament?.organizations as any)?.owner_id === user.id
+      }
+      if (!isOwner) return jsonResponse({ error: 'No autorizado' }, 401)
+
       if (match.daily_room_url) {
         await fetch(`${DAILY_API_BASE}/rooms/${roomName}`, { method: 'DELETE', headers: dailyHeaders })
         await supabaseAdmin.from('matches').update({ daily_room_url: null }).eq('id', match_id)
@@ -72,6 +97,18 @@ serve(async (req) => {
       // determinístico.
       await fetch(`${DAILY_API_BASE}/rooms/${roomName}`, { method: 'DELETE', headers: dailyHeaders }).catch(() => {})
       await supabaseAdmin.from('matches').update({ daily_room_url: null }).eq('id', match_id)
+    }
+
+    // Rate limit: recién acá, porque el cache-hit de arriba no crea nada en
+    // Daily y no debe consumir cupo.
+    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString()
+    const { count: recentCreations } = await supabaseAdmin
+      .from('daily_room_creations')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', windowStart)
+
+    if ((recentCreations ?? 0) >= RATE_LIMIT_MAX_CREATIONS) {
+      return jsonResponse({ error: 'Se crearon demasiadas salas en poco tiempo. Probá de nuevo en unos minutos.' }, 429)
     }
 
     const expSeconds = Math.floor(Date.now() / 1000) + 6 * 60 * 60 // 6 horas de margen
@@ -102,6 +139,7 @@ serve(async (req) => {
     }
 
     await supabaseAdmin.from('matches').update({ daily_room_url: roomData.url }).eq('id', match_id)
+    await supabaseAdmin.from('daily_room_creations').insert({ match_id })
 
     return jsonResponse({ url: roomData.url })
   } catch {
