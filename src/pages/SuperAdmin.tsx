@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+const PAGE_SIZE = 20
+
 export default function SuperAdmin() {
   const [session, setSession] = useState<any>(null)
   const [checking, setChecking] = useState(true)
@@ -10,6 +12,8 @@ export default function SuperAdmin() {
   const [logging, setLogging] = useState(false)
   const [orgs, setOrgs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [screen, setScreen] = useState<'list' | 'create'>('list')
   const [editingOrg, setEditingOrg] = useState<any>(null)
 
@@ -56,15 +60,19 @@ export default function SuperAdmin() {
     setSession(null)
   }
 
-  async function loadOrgs() {
-    setLoading(true)
+  async function loadOrgs(offset = 0) {
+    offset === 0 ? setLoading(true) : setLoadingMore(true)
     const { data } = await supabase
       .from('organizations')
       .select('*')
       .eq('app', 'futbol')
       .order('created_at', { ascending: false })
-    setOrgs(data ?? [])
+      .range(offset, offset + PAGE_SIZE - 1)
+    const rows = data ?? []
+    setOrgs(prev => offset === 0 ? rows : [...prev, ...rows])
+    setHasMore(rows.length === PAGE_SIZE)
     setLoading(false)
+    setLoadingMore(false)
   }
 
   async function createClient() {
@@ -196,7 +204,7 @@ export default function SuperAdmin() {
         </div>
       </div>
       <div style={{ padding: 16, maxWidth: 700, margin: '0 auto' }}>
-        <p style={{ color: '#64748b', fontSize: 12, marginBottom: 16 }}>{orgs.length} clientes registrados</p>
+        <p style={{ color: '#64748b', fontSize: 12, marginBottom: 16 }}>{orgs.length} clientes cargados</p>
         {loading ? <p style={{ color: '#94a3b8', textAlign: 'center' }}>Cargando...</p> : orgs.map(org => (
           <div key={org.id} style={styles.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -232,6 +240,15 @@ export default function SuperAdmin() {
             </div>
           </div>
         ))}
+        {!loading && hasMore && (
+          <button
+            style={{ ...styles.btn('#334155'), width: '100%', marginTop: 4 }}
+            disabled={loadingMore}
+            onClick={() => loadOrgs(orgs.length)}
+          >
+            {loadingMore ? 'Cargando...' : 'Cargar más'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -6,10 +6,14 @@ import QuickMatchSetup from './QuickMatchSetup'
 
 type Props = { org: any; onLogout: () => void }
 
+const PAGE_SIZE = 20
+
 export default function AdminDashboard({ org, onLogout }: Props) {
   const navigate = useNavigate()
   const [tournaments, setTournaments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [screen, setScreen] = useState<'dashboard' | 'setup' | 'quickmatch'>('dashboard')
   const [showChangePassword, setShowChangePassword] = useState(!org.password_changed)
   const [newPassword, setNewPassword] = useState('')
@@ -22,15 +26,20 @@ export default function AdminDashboard({ org, onLogout }: Props) {
     loadTournaments()
   }, [])
 
-  async function loadTournaments() {
+  async function loadTournaments(offset = 0) {
+    offset === 0 ? setLoading(true) : setLoadingMore(true)
     const { data } = await supabase
       .from('tournaments')
       .select('id, name, date, format, status, finished_at, winner_team_name, periods_per_match, slug')
       .eq('org_id', org.id)
       .eq('app', 'futbol')
       .order('created_at', { ascending: false })
-    setTournaments(data ?? [])
+      .range(offset, offset + PAGE_SIZE - 1)
+    const rows = data ?? []
+    setTournaments(prev => offset === 0 ? rows : [...prev, ...rows])
+    setHasMore(rows.length === PAGE_SIZE)
     setLoading(false)
+    setLoadingMore(false)
   }
 
   async function handleLogout() {
@@ -204,6 +213,15 @@ export default function AdminDashboard({ org, onLogout }: Props) {
                 </div>
               </div>
             ))}
+            {!loading && hasMore && (
+              <button
+                style={{ ...styles.btn('#1A6B35'), width: '100%', marginTop: 4 }}
+                disabled={loadingMore}
+                onClick={() => loadTournaments(tournaments.length)}
+              >
+                {loadingMore ? 'Cargando...' : 'Cargar más'}
+              </button>
+            )}
           </>
         ) : null}
       </div>
