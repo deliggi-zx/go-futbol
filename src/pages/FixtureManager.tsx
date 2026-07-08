@@ -92,7 +92,16 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
 
   async function markWalkover(match: any, winnerId: string) {
     if (!confirm('Marcar walkover? El equipo ganador avanza sin jugar.')) return
-    await supabase.from('matches').update({ status: 'finished', played_at: new Date().toISOString() }).eq('id', match.id)
+    // Mismo criterio que finishMatch en MatchView: winner_id solo tiene
+    // sentido en partidos de eliminación directa (hace falta para que
+    // generateNextKnockoutRound detecte la ronda completa). Los de grupo
+    // se resuelven por posiciones, calculadas de goals, no de winner_id.
+    const isKnockout = match.stage !== 'group'
+    await supabase.from('matches').update({
+      status: 'finished',
+      played_at: new Date().toISOString(),
+      winner_id: isKnockout ? winnerId : null,
+    }).eq('id', match.id)
     // Insertar gol simbólico para el ganador (1-0)
     await supabase.from('goals').insert({ match_id: match.id, team_id: winnerId, player_id: null, chukker: 1, app: 'futbol' })
     onRefresh()
