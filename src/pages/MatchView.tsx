@@ -100,6 +100,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   // Arranca muteado: todavía no hay conexión a Daily.co hasta que alguien
   // toque mic (admin) o radio (espectador).
   const [narrationMuted, setNarrationMuted] = useState(true)
+  // El navegador bloqueó el autoplay del audio remoto — hace falta un gesto real del usuario (tocar un botón) para reintentarlo.
+  const [narrationBlocked, setNarrationBlocked] = useState(false)
   const [dailyStatus, setDailyStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle')
   const [dailyError, setDailyError] = useState<string | null>(null)
   const dailyCallRef = useRef<any>(null)
@@ -260,7 +262,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     // Sin esto el autoplay queda librado a cada navegador — colgado del DOM, oculto, es lo que hace que reproduzca de forma confiable (sobre todo en mobile).
     audioEl.style.display = 'none'
     document.body.appendChild(audioEl)
+    // El atributo autoplay no siempre alcanza (Safari/iOS puede bloquearlo silenciosamente) — con el .play() explícito nos enteramos si lo bloqueó y podemos ofrecer un botón para reintentar con un gesto real del usuario.
+    audioEl.play().catch(() => setNarrationBlocked(true))
     remoteAudioElsRef.current.push(audioEl)
+  }
+
+  function retryNarrationPlayback() {
+    remoteAudioElsRef.current.forEach(el => { el.play().catch(() => {}) })
+    setNarrationBlocked(false)
   }
 
   // Se llama cuando la sala se cae DESPUES de haber conectado con éxito
@@ -338,29 +347,18 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     }
   }, [match.id])
 
-  // setInputDevicesAsync/setLocalAudio solo confirman que se pudo tomar el hardware local — hay que esperar a que Daily confirme tracks.audio.state === 'playable' (el track realmente saliendo) antes de considerar el mic activo.
-  function waitForLocalAudioPlayable(call: any, timeoutMs = 6000): Promise<boolean> {
-    return new Promise((resolve) => {
-      if (call.participants?.()?.local?.tracks?.audio?.state === 'playable') {
-        resolve(true)
-        return
-      }
-      let settled = false
-      const timer = setTimeout(() => finish(false), timeoutMs)
-      function onUpdate(event: any) {
-        if (!event.participant?.local) return
-        if (event.participant.tracks?.audio?.state !== 'playable') return
-        finish(true)
-      }
-      function finish(result: boolean) {
-        if (settled) return
-        settled = true
-        clearTimeout(timer)
-        call.off('participant-updated', onUpdate)
-        resolve(result)
-      }
-      call.on('participant-updated', onUpdate)
-    })
+  // tracks.audio.state === 'playable' del lado local solo confirma que Daily pudo capturar el hardware — según la doc de Daily, NO garantiza que el track se haya publicado a la sala. audioSendBitsPerSecond > 0 en getNetworkStats() sí mide bits salientes reales sobre la conexión, así que es la señal que efectivamente prueba que el audio está saliendo.
+  async function waitForAudioActuallySending(call: any, timeoutMs = 8000): Promise<boolean> {
+    const start = Date.now()
+    while (Date.now() - start < timeoutMs) {
+      try {
+        const netStats = await call.getNetworkStats()
+        const bps = netStats?.stats?.latest?.audioSendBitsPerSecond
+        if (typeof bps === 'number' && bps > 0) return true
+      } catch (e) { /* seguimos reintentando hasta el timeout */ }
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+    return false
   }
 
   async function toggleMic() {
@@ -379,7 +377,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       } else {
         call.setLocalAudio(true)
       }
-      const confirmed = await waitForLocalAudioPlayable(call)
+      const confirmed = await waitForAudioActuallySending(call)
       if (confirmed) {
         setMicOn(true)
       } else {
@@ -398,6 +396,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       narrationMutedRef.current = true
       remoteAudioElsRef.current.forEach((el) => { el.muted = true })
       setNarrationMuted(true)
+      setNarrationBlocked(false)
       return
     }
     const call = await ensureDailyCall()
@@ -559,6 +558,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
       return
     }
+    // El reloj se frena siempre al finalizar, hayan tocado "Finalizar tiempo" antes o no.
+    await stopClock()
     const winnerId = isKnockout
       ? (homeGoals > awayGoals ? match.team_home_id : match.team_away_id)
       : null
@@ -614,6 +615,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       return
     }
     const winnerId = penaltyHome > penaltyAway ? match.team_home_id : match.team_away_id
+    // El reloj se frena siempre al finalizar, hayan tocado "Finalizar tiempo" antes o no.
+    await stopClock()
     await supabase.from('matches').update({
       status: 'finished',
       played_at: new Date().toISOString(),
@@ -644,12 +647,14 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       finalType = 'red'
     }
     setSaving(true)
+    const minute = Math.max(0, Math.floor(clockElapsed / 60))
     const { error } = await supabase.from('cards').insert({
       match_id: match.id,
       player_id: playerId,
       team_id: teamId,
       type: finalType,
       period: period,
+      minute,
       app: 'futbol',
     })
     if (error) { alert(`Error al registrar tarjeta: ${error.message}`); setSaving(false); return }
@@ -919,6 +924,15 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
           </div>
         </div>
       </div>
+
+      {/* El navegador bloqueó el autoplay del relato — hace falta un toque real para reintentar */}
+      {narrationBlocked && (
+        <div style={{ background: 'rgba(201,168,76,0.15)', borderBottom: `1px solid ${gold}66`, padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+          <button onClick={retryNarrationPlayback} style={{ background: gold, border: 'none', borderRadius: 8, padding: '8px 16px', color: '#0A3D1F', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'Georgia, serif' }}>
+            🔊 Tocá para escuchar el relato
+          </button>
+        </div>
+      )}
 
       {/* QR */}
       {showQR && (
