@@ -115,6 +115,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const crowdRef = useRef<HTMLAudioElement | null>(null)
   const applauseRef = useRef<HTMLAudioElement | null>(null)
   const channelRef = useRef<any>(null)
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
 
   const periodSeconds = (tournament.chukker_duration_minutes ?? 45) * 60
   const totalPeriods = tournament.periods_per_match ?? 2
@@ -195,22 +196,52 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     loadData()
     loadClock()
     loadMatchRow()
-    const channel = supabase
-      .channel(`match-${match.id}`, { config: { broadcast: { self: true } } })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_votes', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'substitutions', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups', filter: `match_id=eq.${match.id}` }, () => loadData())
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
-      .on('broadcast', { event: 'play_sound' }, ({ payload }) => playTriggeredSound(payload.sound))
-      .subscribe()
-    channelRef.current = channel
-    return () => { supabase.removeChannel(channel) }
+
+    let cancelled = false
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+    // Reconecta el canal si se cae (CHANNEL_ERROR/TIMED_OUT/CLOSED) — sin
+    // esto, un corte de red o un restart de Supabase (como el pause del
+    // free tier) deja goles/tarjetas/sonido sin llegar en vivo hasta que
+    // el usuario sale y vuelve a entrar a la pantalla.
+    function subscribeToMatchChannel() {
+      setRealtimeStatus('connecting')
+      const channel = supabase
+        .channel(`match-${match.id}`, { config: { broadcast: { self: true } } })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'goals', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_votes', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'mvp_official', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_clock', filter: `match_id=eq.${match.id}` }, () => loadClock())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'cards', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'substitutions', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'match_lineups', filter: `match_id=eq.${match.id}` }, () => loadData())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${match.id}` }, () => loadMatchRow())
+        .on('broadcast', { event: 'play_sound' }, ({ payload }) => playTriggeredSound(payload.sound))
+        .subscribe((status) => {
+          if (cancelled) return
+          if (status === 'SUBSCRIBED') {
+            setRealtimeStatus('connected')
+            loadData()
+            loadClock()
+            loadMatchRow()
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+            setRealtimeStatus('error')
+            supabase.removeChannel(channel)
+            reconnectTimer = setTimeout(() => { if (!cancelled) subscribeToMatchChannel() }, 3000)
+          }
+        })
+      channelRef.current = channel
+    }
+
+    subscribeToMatchChannel()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      if (channelRef.current) supabase.removeChannel(channelRef.current)
+    }
   }, [match.id])
 
   // Relato en vivo (Daily.co): NO se conecta a la sala al abrir el partido.
@@ -250,7 +281,13 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   // primera vez que se necesita, y reutiliza la misma conexión para mic y
   // radio. Deduplica llamadas concurrentes con dailyConnectPromiseRef.
   async function ensureDailyCall(): Promise<any | null> {
-    if (dailyCallRef.current) return dailyCallRef.current
+    if (dailyCallRef.current) {
+      // No confío en el objeto cacheado solo porque existe: la sala pudo expulsarlo (eject_at_room_exp) sin disparar 'error'/'left-meeting'.
+      if (dailyCallRef.current.meetingState?.() === 'joined-meeting') return dailyCallRef.current
+      dailyCallRef.current.destroy().catch(() => {})
+      dailyCallRef.current = null
+      micRequestedRef.current = false
+    }
     if (dailyConnectPromiseRef.current) return dailyConnectPromiseRef.current
     setDailyStatus('connecting')
     setDailyError(null)
@@ -761,10 +798,13 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
           <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', letterSpacing: 2, textTransform: 'uppercase' as const }}>
             {match.stage === 'group' ? `Grupo ${match.group_name}` : knockoutRoundLabel(match, tournament.team_count)}
           </span>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' as const }}>
             <span style={{ fontSize: 11, padding: '3px 10px', borderRadius: 20, background: match.status === 'finished' ? '#166534' : match.status === 'live' ? '#dc2626' : '#334155', color: '#fff', fontWeight: 700, letterSpacing: 1 }}>
               {match.status === 'finished' ? 'Finalizado' : match.status === 'live' ? 'En vivo' : 'Pendiente'}
             </span>
+            {realtimeStatus !== 'connected' && (
+              <span title="Reconectando la sincronización en vivo…" style={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', display: 'inline-block', flexShrink: 0 }} />
+            )}
             {isAdmin && (
               <>
                 <button onClick={() => triggerSound('applause')} title="Aplausos" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
@@ -787,7 +827,19 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                   )}
                 </button>
                 <button onClick={() => triggerSound('whistle')} title="Silbato" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                  <img src="/icons/silbato.png" alt="Silbato" style={{ width: 16, height: 16, objectFit: 'contain' as const }} />
+                  {/* silbato.png viene en celeste — se usa como máscara para pintarlo del mismo gold que el resto */}
+                  <span role="img" aria-label="Silbato" style={{
+                    width: 16, height: 16, display: 'inline-block',
+                    backgroundColor: gold,
+                    WebkitMaskImage: 'url(/icons/silbato.png)',
+                    maskImage: 'url(/icons/silbato.png)',
+                    WebkitMaskSize: 'contain',
+                    maskSize: 'contain',
+                    WebkitMaskRepeat: 'no-repeat',
+                    maskRepeat: 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    maskPosition: 'center',
+                  }} />
                 </button>
                 <button onClick={() => triggerSound('crowd')} title="Grito de gol" style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}66`, borderRadius: 8, padding: '4px 10px', color: gold, cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <PartyPopper size={15} />

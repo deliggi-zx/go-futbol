@@ -102,8 +102,6 @@ export default function FixtureManager({ tournament, matches, teams, onClose, on
       played_at: new Date().toISOString(),
       winner_id: isKnockout ? winnerId : null,
     }).eq('id', match.id)
-    // Insertar gol simbólico para el ganador (1-0)
-    await supabase.from('goals').insert({ match_id: match.id, team_id: winnerId, player_id: null, chukker: 1, app: 'futbol' })
     onRefresh()
   }
 
