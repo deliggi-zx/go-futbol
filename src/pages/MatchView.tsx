@@ -95,6 +95,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const soundOnRef = useRef(true)
 
   const [micOn, setMicOn] = useState(false)
+  // true cuando Daily confirmó el acceso local al hardware pero no confirmó que el audio se esté enviando — no se solapa con dailyStatus porque no implica que la radio/recepción también esté rota.
+  const [micConfirmError, setMicConfirmError] = useState(false)
   // Arranca muteado: todavía no hay conexión a Daily.co hasta que alguien
   // toque mic (admin) o radio (espectador).
   const [narrationMuted, setNarrationMuted] = useState(true)
@@ -333,6 +335,31 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     }
   }, [match.id])
 
+  // setInputDevicesAsync/setLocalAudio solo confirman que se pudo tomar el hardware local — hay que esperar a que Daily confirme tracks.audio.state === 'playable' (el track realmente saliendo) antes de considerar el mic activo.
+  function waitForLocalAudioPlayable(call: any, timeoutMs = 6000): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (call.participants?.()?.local?.tracks?.audio?.state === 'playable') {
+        resolve(true)
+        return
+      }
+      let settled = false
+      const timer = setTimeout(() => finish(false), timeoutMs)
+      function onUpdate(event: any) {
+        if (!event.participant?.local) return
+        if (event.participant.tracks?.audio?.state !== 'playable') return
+        finish(true)
+      }
+      function finish(result: boolean) {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        call.off('participant-updated', onUpdate)
+        resolve(result)
+      }
+      call.on('participant-updated', onUpdate)
+    })
+  }
+
   async function toggleMic() {
     if (micOn) {
       dailyCallRef.current?.setLocalAudio(false)
@@ -341,6 +368,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     }
     const call = await ensureDailyCall()
     if (!call) return
+    setMicConfirmError(false)
     try {
       if (!micRequestedRef.current) {
         await call.setInputDevicesAsync({ audioSource: true })
@@ -348,7 +376,14 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       } else {
         call.setLocalAudio(true)
       }
-      setMicOn(true)
+      const confirmed = await waitForLocalAudioPlayable(call)
+      if (confirmed) {
+        setMicOn(true)
+      } else {
+        call.setLocalAudio(false)
+        setMicOn(false)
+        setMicConfirmError(true)
+      }
     } catch (e) {
       setDailyStatus('error')
       setDailyError('No se pudo activar el micrófono. Revisá el permiso del navegador.')
@@ -812,7 +847,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 </button>
                 <button
                   onClick={toggleMic}
-                  title={micOn ? 'Dejar de relatar' : dailyStatus === 'error' ? `${dailyError} (tocá para reintentar)` : dailyStatus === 'connecting' ? 'Conectando…' : 'Relatar en vivo'}
+                  title={micOn ? 'Dejar de relatar' : micConfirmError ? 'No se pudo confirmar que el micrófono esté saliendo en vivo (tocá para reintentar)' : dailyStatus === 'error' ? `${dailyError} (tocá para reintentar)` : dailyStatus === 'connecting' ? 'Conectando…' : 'Relatar en vivo'}
                   style={{
                     position: 'relative' as const,
                     background: micOn ? 'rgba(220,38,38,0.25)' : 'rgba(0,0,0,0.5)',
@@ -822,7 +857,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                   }}
                 >
                   <MicVocal size={15} />
-                  {dailyStatus === 'error' && !micOn && (
+                  {(dailyStatus === 'error' || micConfirmError) && !micOn && (
                     <span style={{ position: 'absolute' as const, top: -4, right: -4, background: '#ef4444', color: '#fff', borderRadius: '50%', width: 14, height: 14, fontSize: 10, lineHeight: '14px', textAlign: 'center' as const, fontWeight: 700 }}>!</span>
                   )}
                 </button>
