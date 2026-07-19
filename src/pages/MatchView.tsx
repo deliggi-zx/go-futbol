@@ -225,7 +225,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
           if (cancelled) return
           if (status === 'SUBSCRIBED') {
             setRealtimeStatus('connected')
-            loadData()
+            loadData(true)
             loadClock()
             loadMatchRow()
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
@@ -257,6 +257,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     audioEl.autoplay = true
     audioEl.muted = narrationMutedRef.current
     audioEl.srcObject = new MediaStream([event.track])
+    // Sin esto el autoplay queda librado a cada navegador — colgado del DOM, oculto, es lo que hace que reproduzca de forma confiable (sobre todo en mobile).
+    audioEl.style.display = 'none'
+    document.body.appendChild(audioEl)
     remoteAudioElsRef.current.push(audioEl)
   }
 
@@ -322,7 +325,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   useEffect(() => {
     return () => {
-      remoteAudioElsRef.current.forEach(el => { el.pause(); el.srcObject = null })
+      remoteAudioElsRef.current.forEach(el => { el.pause(); el.srcObject = null; el.remove() })
       remoteAudioElsRef.current = []
       const call = dailyCallRef.current
       if (call) {
@@ -412,8 +415,8 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     }
   }
 
-  async function loadData() {
-    setLoading(true)
+  async function loadData(silent = false) {
+    if (!silent) setLoading(true)
     const [g, p, v, m, c, s, l] = await Promise.all([
       supabase.from('goals').select('*, player:players(*)').eq('match_id', match.id).eq('app', 'futbol').order('created_at'),
       supabase.from('players').select('*').in('team_id', [match.team_home_id, match.team_away_id]).eq('app', 'futbol'),
@@ -431,8 +434,21 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     setSubstitutions(s.data ?? [])
     setLineups(l.data ?? [])
     setStarterIds(new Set((l.data ?? []).map((row: any) => row.player_id)))
-    setLoading(false)
+    if (!silent) setLoading(false)
   }
+
+  // Respaldo del Realtime: el canal puede reportar SUBSCRIBED de inmediato aunque el tenant todavía esté "en frío" (recién reactivado tras estar sin suscriptores) y tarde en empezar a transmitir postgres_changes de verdad. Mientras el partido está en vivo, este polling refresca solo por si el push no llegó.
+  const liveStatusRef = useRef(displayMatch.status)
+  useEffect(() => { liveStatusRef.current = displayMatch.status }, [displayMatch.status])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (liveStatusRef.current !== 'live') return
+      loadData(true)
+      loadMatchRow()
+    }, 6000)
+    return () => clearInterval(interval)
+  }, [match.id])
 
   useEffect(() => {
     if (clock?.status !== 'running') return
