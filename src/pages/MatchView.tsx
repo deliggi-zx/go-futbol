@@ -443,9 +443,12 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // TEMP debug — sacar una vez confirmado en cancha que el polling corre.
+      console.log('[polling]', new Date().toISOString(), 'liveStatus:', liveStatusRef.current)
       if (liveStatusRef.current !== 'live') return
       loadData(true)
       loadMatchRow()
+      loadClock()
     }, 6000)
     return () => clearInterval(interval)
   }, [match.id])
@@ -979,7 +982,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
           borderRadius: 20,
           border: `1px solid ${gold}44`,
           boxShadow: `0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)`,
-          padding: '48px 20px 24px',
+          padding: '70px 20px 24px',
           position: 'relative' as const,
           overflow: 'visible' as const,
         }}>
