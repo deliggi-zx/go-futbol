@@ -49,7 +49,7 @@ function timeOnDate(iso: string | null, dateStr: string): string {
 
 export default function TournamentView({ tournament, onReset, initialMatchId }: Props) {
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'fixture' | 'schedule' | 'standings' | 'stats' | 'teams' | 'awards'>(
+  const [tab, setTab] = useState<'fixture' | 'schedule' | 'stats' | 'teams' | 'awards'>(
     () => tournament.format === 'partido_unico' ? 'teams' : 'fixture'
   )
   const [expandedRounds, setExpandedRounds] = useState<Set<number>>(new Set())
@@ -247,6 +247,32 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
       }
       return { ...team, pts, gf, gc, gd: gf - gc, w, d, l, pj: teamMatches.length }
     }).sort((a, b) => b.pts - a.pts || b.gd - a.gd)
+  }
+
+  // Eliminación directa pura: no hay tabla de puntos (no aplica clasificación
+  // por puntaje), así que se ordena alfabético. Un partido resuelto por
+  // penales cuenta como empate (PE) para las dos escuadras — el avance de
+  // ronda usa winner_id, pero acá reflejamos el marcador de tiempo
+  // reglamentario/extra, no quién siguió en el torneo.
+  function getKnockoutStandings() {
+    return teams.map(team => {
+      const teamMatches = matches.filter(m =>
+        m.status === 'finished' &&
+        (m.team_home_id === team.id || m.team_away_id === team.id)
+      )
+      let pg = 0, pe = 0, pp = 0, gf = 0, gc = 0
+      for (const m of teamMatches) {
+        const myGoals = getMatchGoals(m.id, team.id)
+        const oppId = m.team_home_id === team.id ? m.team_away_id : m.team_home_id
+        const oppGoals = getMatchGoals(m.id, oppId)
+        gf += myGoals; gc += oppGoals
+        const wentToPenalties = m.penalty_home_score != null || m.penalty_away_score != null
+        if (wentToPenalties || myGoals === oppGoals) pe++
+        else if (myGoals > oppGoals) pg++
+        else pp++
+      }
+      return { ...team, pj: teamMatches.length, pg, pe, pp, gf, gc }
+    }).sort((a, b) => a.name.localeCompare(b.name))
   }
 
   function getDisciplineTable() {
@@ -952,8 +978,8 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
       {/* Tabs */}
       <div style={{ display: 'flex', background: 'rgba(30,5,15,0.95)', borderBottom: `1px solid ${gold}44`, overflowX: 'auto' as const }}>
         {(tournament.format === 'partido_unico'
-          ? ['standings', 'stats', 'teams'] as const
-          : ['fixture', 'schedule', 'standings', 'stats', 'teams', 'awards'] as const
+          ? ['stats', 'teams'] as const
+          : ['fixture', 'schedule', 'stats', 'teams', 'awards'] as const
         ).map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             flex: 1, padding: '13px 6px', textAlign: 'center' as const, cursor: 'pointer',
@@ -965,7 +991,7 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
             whiteSpace: 'nowrap' as const,
             transition: 'color 0.2s',
           }}>
-            {t === 'fixture' ? 'Fixture' : t === 'schedule' ? 'Cronograma' : t === 'standings' ? 'Posiciones' : t === 'stats' ? 'Estadísticas' : t === 'teams' ? 'Equipos' : 'Premios'}
+            {t === 'fixture' ? 'Fixture' : t === 'schedule' ? 'Cronograma' : t === 'stats' ? 'Estadísticas' : t === 'teams' ? 'Equipos' : 'Premios'}
           </button>
         ))}
       </div>
@@ -1167,51 +1193,43 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
               )}
             </>
 
-          /* ── POSICIONES ── */
-          ) : tab === 'standings' ? (
-            <>
-              {tournament.format === 'partido_unico' ? (
-                <StandingsTable label="PARTIDO" standing={getAllTeamStandings()} />
-              ) : tournament.format !== 'knockout' && groups.map(group => (
-                <StandingsTable key={group} label={`GRUPO ${group}`} standing={getStandings(group)} />
-              ))}
-            </>
-
           /* ── STATS ── */
           ) : tab === 'stats' ? (
             <>
-              {/* Tabla de Posiciones */}
-              <p style={styles.sectionLabel}>TABLA DE POSICIONES</p>
-              <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
-                {goldBar}
-                <div style={{ background: cardBg, overflowX: 'auto' as const }}>
-                  <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 11, padding: '8px 10px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1, minWidth: 360 }}>
-                    <span style={{ flex: 1 }}>Equipo</span>
-                    {['PJ','PG','PE','PP','GF','GC','DG'].map(h => <span key={h} style={{ width: 26, textAlign: 'center' as const }}>{h}</span>)}
-                    <span style={{ width: 34, textAlign: 'center' as const, color: gold, fontWeight: 700 }}>PTS</span>
-                  </div>
-                  {getAllTeamStandings().length === 0
-                    ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Sin partidos finalizados</p>
-                    : getAllTeamStandings().map((team, i) => (
-                      <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '9px 10px', borderBottom: `1px solid ${gold}22`, background: i < 2 ? `rgba(201,168,76,0.07)` : 'transparent', minWidth: 360 }}>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ color: '#a8d5b5', fontSize: 11, width: 14 }}>{i + 1}</span>
-                          <Avatar url={team.logo_url} name={team.name} size={22} />
-                          <span style={{ fontWeight: i < 2 ? 700 : 400, fontFamily: 'Georgia, serif', fontSize: 12 }}>{team.name}</span>
-                        </div>
-                        {[team.pj, team.w, team.d, team.l, team.gf, team.gc].map((val, idx) => (
-                          <span key={idx} style={{ width: 26, textAlign: 'center' as const, color: '#a8d5b5', fontSize: 12 }}>{val}</span>
-                        ))}
-                        <span style={{ width: 26, textAlign: 'center' as const, fontSize: 12, color: team.gd > 0 ? '#4ade80' : team.gd < 0 ? '#ef4444' : '#a8d5b5' }}>
-                          {team.gd > 0 ? `+${team.gd}` : team.gd}
-                        </span>
-                        <span style={{ width: 34, textAlign: 'center' as const, fontWeight: 900, color: gold, fontSize: 14, fontFamily: 'Georgia, serif' }}>{team.pts}</span>
+              {/* Tabla de equipos */}
+              {tournament.format === 'partido_unico' ? (
+                <StandingsTable label="PARTIDO" standing={getAllTeamStandings()} />
+              ) : tournament.format === 'knockout' ? (
+                <>
+                  <p style={styles.sectionLabel}>TABLA DE EQUIPOS</p>
+                  <div style={{ borderRadius: 14, overflow: 'hidden', marginBottom: 24, boxShadow: `0 0 0 1px ${gold}44, 0 4px 16px rgba(0,0,0,0.5)` }}>
+                    {goldBar}
+                    <div style={{ background: cardBg, overflowX: 'auto' as const }}>
+                      <div style={{ display: 'flex', color: '#a8d5b5', fontSize: 11, padding: '8px 10px', borderBottom: `1px solid ${gold}33`, fontFamily: 'Georgia, serif', letterSpacing: 1, minWidth: 320 }}>
+                        <span style={{ flex: 1 }}>Equipo</span>
+                        {['PJ','PG','PE','PP','GF','GC'].map(h => <span key={h} style={{ width: 30, textAlign: 'center' as const }}>{h}</span>)}
                       </div>
-                    ))
-                  }
-                </div>
-                {goldBar}
-              </div>
+                      {getKnockoutStandings().length === 0
+                        ? <p style={{ color: '#a8d5b5', padding: 20, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Sin partidos finalizados</p>
+                        : getKnockoutStandings().map(team => (
+                          <div key={team.id} style={{ display: 'flex', alignItems: 'center', padding: '9px 10px', borderBottom: `1px solid ${gold}22`, minWidth: 320 }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Avatar url={team.logo_url} name={team.name} size={22} />
+                              <span style={{ fontFamily: 'Georgia, serif', fontSize: 12 }}>{team.name}</span>
+                            </div>
+                            {[team.pj, team.pg, team.pe, team.pp, team.gf, team.gc].map((val, idx) => (
+                              <span key={idx} style={{ width: 30, textAlign: 'center' as const, color: '#a8d5b5', fontSize: 12 }}>{val}</span>
+                            ))}
+                          </div>
+                        ))
+                      }
+                    </div>
+                    {goldBar}
+                  </div>
+                </>
+              ) : groups.map(group => (
+                <StandingsTable key={group} label={`GRUPO ${group}`} standing={getStandings(group)} />
+              ))}
 
               {/* Goleadores */}
               <p style={styles.sectionLabel}>GOLEADORES</p>
