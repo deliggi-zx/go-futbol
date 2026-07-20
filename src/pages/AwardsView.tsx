@@ -198,8 +198,21 @@ export default function AwardsView({ tournament, isAdmin }: Props) {
 
   if (loading) return <p style={{ color: gold, textAlign: 'center', marginTop: 40, fontFamily: 'Georgia, serif' }}>Cargando...</p>
 
+  // Mismo cutoff que la Edge Function cleanup-storage — un torneo finalizado
+  // antes de esto queda afuera de la limpieza automática para siempre.
+  const CLEANUP_CUTOFF = new Date('2026-07-20T15:58:06.000Z')
+  const finishedAt = tournament.finished_at ? new Date(tournament.finished_at) : null
+  const showCleanupNotice = isAdmin && tournament.status === 'finished' && finishedAt && finishedAt > CLEANUP_CUTOFF
+  const formatDate = (d: Date) => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+
   return (
     <div>
+      {showCleanupNotice && finishedAt && (
+        <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, margin: '0 0 12px', fontFamily: 'Georgia, serif', lineHeight: 1.5 }}>
+          Los videos de los jugadores de este torneo se eliminan automáticamente el {formatDate(new Date(finishedAt.getTime() + 14 * 24 * 60 * 60 * 1000))} · Las fotos de la galería, el {formatDate(new Date(finishedAt.getTime() + 30 * 24 * 60 * 60 * 1000))}
+        </p>
+      )}
+
       {/* Sub-tabs */}
       <div style={{ display: 'flex', background: 'rgba(30,5,15,0.8)', borderRadius: 12, margin: '0 0 16px', padding: 4, border: borderGold }}>
         {(['awards', 'gallery'] as const).map(t => (
