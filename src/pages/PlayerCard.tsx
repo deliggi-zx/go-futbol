@@ -5,6 +5,7 @@ type Player = {
   id: string
   name: string
   photo_url?: string | null
+  intro_video_url?: string | null
   handicap?: number
   position?: number
   bio?: string
@@ -179,9 +180,12 @@ export default function PlayerCard({ players, onVote, onChangeVote, voteCount, v
           )}
         </div>
 
-        {/* Foto del jugador */}
+        {/* Foto del jugador (o video corto, si tiene) */}
         <div style={{ position: 'relative', zIndex: 1, width: '100%', height: '52%', overflow: 'hidden' }}>
-          {player.photo_url ? (
+          {player.intro_video_url ? (
+            <video key={player.id} src={player.intro_video_url} autoPlay loop muted playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          ) : player.photo_url ? (
             <img src={player.photo_url} alt={player.name}
               style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
           ) : (

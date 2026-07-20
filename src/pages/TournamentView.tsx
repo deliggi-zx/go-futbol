@@ -16,6 +16,8 @@ const darkBg = '#062B14'
 const cardBg = 'linear-gradient(160deg, #3d2810 0%, #2a1c0a 30%, #1e1408 60%, #2a1c0a 100%)'
 const borderGold = `1px solid ${gold}55`
 
+const MAX_INTRO_VIDEO_BYTES = 3 * 1024 * 1024
+
 const WEEKDAYS_SHORT = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const WEEKDAYS_LONG = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
@@ -280,7 +282,11 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
         if (player._newPhoto) {
           photoUrl = await uploadImage(player._newPhoto, `players/${player.id}.jpg`)
         }
-        await supabase.from('players').update({ name: player.name, photo_url: photoUrl, handicap: player.handicap, position: player.position, bio: player.bio }).eq('id', player.id)
+        let introVideoUrl = player.intro_video_url
+        if (player._newVideo) {
+          introVideoUrl = await uploadImage(player._newVideo, `player-videos/${player.id}.mp4`)
+        }
+        await supabase.from('players').update({ name: player.name, photo_url: photoUrl, intro_video_url: introVideoUrl, handicap: player.handicap, position: player.position, bio: player.bio }).eq('id', player.id)
       }
 
       await loadData()
@@ -595,6 +601,20 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                   <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
                     const updated = [...editingTeam._players]
                     updated[j] = { ...updated[j], _newPhoto: e.target.files?.[0] ?? null }
+                    setEditingTeam({ ...editingTeam, _players: updated })
+                  }} />
+                  <label style={{ color: '#a8d5b5', fontSize: 11, display: 'block', margin: '8px 0 2px', fontFamily: 'Georgia, serif' }}>
+                    Video corto (opcional, máx. 3MB){player.intro_video_url && !player._newVideo ? ' ✓ cargado' : ''}
+                  </label>
+                  <input type="file" accept="video/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
+                    const file = e.target.files?.[0] ?? null
+                    if (file && file.size > MAX_INTRO_VIDEO_BYTES) {
+                      alert('El video pesa mucho, subí uno más corto o de menor calidad (máximo 3MB).')
+                      e.target.value = ''
+                      return
+                    }
+                    const updated = [...editingTeam._players]
+                    updated[j] = { ...updated[j], _newVideo: file }
                     setEditingTeam({ ...editingTeam, _players: updated })
                   }} />
                 </div>
