@@ -436,15 +436,9 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     if (!silent) setLoading(false)
   }
 
-  // Respaldo del Realtime: el canal puede reportar SUBSCRIBED de inmediato aunque el tenant todavía esté "en frío" (recién reactivado tras estar sin suscriptores) y tarde en empezar a transmitir postgres_changes de verdad. Mientras el partido está en vivo, este polling refresca solo por si el push no llegó.
-  const liveStatusRef = useRef(displayMatch.status)
-  useEffect(() => { liveStatusRef.current = displayMatch.status }, [displayMatch.status])
-
+  // Respaldo del Realtime: el canal puede reportar SUBSCRIBED de inmediato aunque el tenant todavía esté "en frío" (recién reactivado tras estar sin suscriptores) y tarde en empezar a transmitir postgres_changes de verdad. Corre siempre mientras la pantalla está montada, sin importar el estado del partido — un espectador puede entrar antes de que arranque o quedarse mirando después de que termine.
   useEffect(() => {
     const interval = setInterval(() => {
-      // TEMP debug — sacar una vez confirmado en cancha que el polling corre.
-      console.log('[polling]', new Date().toISOString(), 'liveStatus:', liveStatusRef.current)
-      if (liveStatusRef.current !== 'live') return
       loadData(true)
       loadMatchRow()
       loadClock()
@@ -1473,7 +1467,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                 const c = ev.item
                 return (
                   <div key={`card-${c.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
-                    <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>{c.type === 'red' ? '🟥' : '🟨'} T.{c.period}</span>
+                    <span style={{ color: gold, fontSize: 12, fontFamily: 'Georgia, serif', minWidth: 60 }}>{c.type === 'red' ? '🟥' : '🟨'} T.{c.period}{c.minute != null ? ` · ${c.minute}'` : ''}</span>
                     <span style={{ fontWeight: 600, fontFamily: 'Georgia, serif', flex: 1, textAlign: 'center' as const, color: c.type === 'red' ? '#ef4444' : '#facc15' }}>
                       {c.player?.name ?? '?'}
                     </span>
