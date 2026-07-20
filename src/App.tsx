@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useParams, useNavigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import TournamentSetup from './pages/TournamentSetup'
@@ -182,9 +182,66 @@ function Home() {
   return null
 }
 
+// Red de seguridad para pestañas que quedaron abiertas desde antes de un
+// deploy: el cache-control de index.html ya evita que una pestaña NUEVA
+// cargue una versión vieja, pero no puede hacer nada por una pestaña que ya
+// está corriendo y nunca vuelve a pedir el HTML. Esto chequea el HTML real
+// del servidor (sin cache) cada tanto y al volver el foco, y avisa sin forzar
+// el reload — el usuario puede estar en medio de cargar un gol.
+function UpdateBanner() {
+  const baselineHtmlRef = useRef<string | null>(null)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
+
+  useEffect(() => {
+    async function checkForUpdate() {
+      try {
+        const res = await fetch('/', { cache: 'no-store' })
+        const html = await res.text()
+        if (baselineHtmlRef.current === null) {
+          baselineHtmlRef.current = html
+        } else if (html !== baselineHtmlRef.current) {
+          setUpdateAvailable(true)
+        }
+      } catch (e) {
+        // sin conexión momentánea — no molestamos por esto
+      }
+    }
+    checkForUpdate()
+    const interval = setInterval(checkForUpdate, 5 * 60 * 1000)
+    function onVisible() {
+      if (document.visibilityState === 'visible') checkForUpdate()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  if (!updateAvailable) return null
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 9999,
+      background: '#0D4F28', border: '1px solid #C9A84C', borderRadius: 12, padding: '10px 12px 10px 16px',
+      display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+      fontFamily: 'Georgia, serif',
+    }}>
+      <span style={{ color: '#fff', fontSize: 13 }}>Hay una versión nueva disponible</span>
+      <button onClick={() => window.location.reload()} style={{
+        background: '#C9A84C', border: 'none', borderRadius: 8, padding: '6px 12px',
+        color: '#0A3D1F', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'Georgia, serif',
+      }}>
+        Actualizar
+      </button>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <UpdateBanner />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/admin" element={<AdminPanel />} />
