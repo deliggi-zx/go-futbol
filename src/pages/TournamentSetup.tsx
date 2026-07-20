@@ -6,9 +6,11 @@ import * as XLSX from 'xlsx'
 
 type Props = { onCreated: (t: any) => void; orgId?: string }
 
+const MAX_INTRO_VIDEO_BYTES = 3 * 1024 * 1024
+
 const emptyTeam = (group = 'A') => ({
   name: '', group, logo: null as File | null,
-  players: [{ name: '', photo: null as File | null, numero: 0, goles: 0, titular: 'S', bio: '' }]
+  players: [{ name: '', photo: null as File | null, video: null as File | null, numero: 0, goles: 0, titular: 'S', bio: '' }]
 })
 
 const DEFAULT_AWARDS = ['Campeón', 'Mejor Jugador', 'Revelación', 'Goleador', 'Mejor Arquero']
@@ -84,7 +86,7 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
 
   function addPlayer(teamIdx: number) {
   setTeams(prev => prev.map((t, i) => i === teamIdx
-    ? { ...t, players: [...t.players, { name: '', photo: null, numero: 0, goles: 0, titular: 'S', bio: '' }] }
+    ? { ...t, players: [...t.players, { name: '', photo: null, video: null, numero: 0, goles: 0, titular: 'S', bio: '' }] }
     : t
   ))
 }
@@ -204,8 +206,10 @@ function downloadTemplate() {
         for (const player of validPlayers) {
           let photoUrl = null
           if (player.photo) photoUrl = await uploadImage(player.photo, `players/${savedTeam.id}_${player.name}.jpg`)
+          let videoUrl = null
+          if (player.video) videoUrl = await uploadImage(player.video, `player-videos/${savedTeam.id}_${player.name}.mp4`)
           const { error: playerError } = await supabase.from('players').insert({
-            team_id: savedTeam.id, name: player.name, photo_url: photoUrl,
+            team_id: savedTeam.id, name: player.name, photo_url: photoUrl, intro_video_url: videoUrl,
             position: player.numero, bio: player.bio, app: 'futbol',
           })
           if (playerError) throw new Error(`INSERT jugador ${player.name}: ${playerError.message}`)
@@ -449,6 +453,16 @@ function downloadTemplate() {
                     </div>
                     <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Reseña breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
                     <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
+                    <label style={{ color: '#a8d5b5', fontSize: 11, display: 'block', margin: '6px 0 2px' }}>Video corto (opcional, máx. 3MB)</label>
+                    <input type="file" accept="video/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
+                      const file = e.target.files?.[0] ?? null
+                      if (file && file.size > MAX_INTRO_VIDEO_BYTES) {
+                        alert('El video pesa mucho, subí uno más corto o de menor calidad (máximo 3MB).')
+                        e.target.value = ''
+                        return
+                      }
+                      updatePlayer(i, j, 'video', file)
+                    }} />
                   </div>
                 </div>
               ))}
