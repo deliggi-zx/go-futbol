@@ -15,3 +15,8 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/daily-room/deno.json"
 entrypoint = "./functions/daily-room/index.ts"
+
+[functions.cleanup-storage]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/cleanup-storage/index.ts"
