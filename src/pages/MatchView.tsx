@@ -1250,7 +1250,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               <p style={{ color: homePending > 0 ? '#fb923c' : gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 {match.team_home?.name}{homePending > 0 ? ` (${homePending} ⚡)` : ''}
               </p>
-              {players.filter(p => p.team_id === match.team_home_id && !isPlayerExpelled(p.id)).map(player => {
+              {players.filter(p => p.team_id === match.team_home_id && onFieldIds(match.team_home_id).has(p.id) && !isPlayerExpelled(p.id)).map(player => {
                 const yellows = getPlayerYellows(player.id)
                 return (
                   <button key={player.id} disabled={saving}
@@ -1268,7 +1268,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               <p style={{ color: awayPending > 0 ? '#fb923c' : gold, fontWeight: 700, fontSize: 13, marginBottom: 8, textAlign: 'center' as const, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
                 {match.team_away?.name}{awayPending > 0 ? ` (${awayPending} ⚡)` : ''}
               </p>
-              {players.filter(p => p.team_id === match.team_away_id && !isPlayerExpelled(p.id)).map(player => {
+              {players.filter(p => p.team_id === match.team_away_id && onFieldIds(match.team_away_id).has(p.id) && !isPlayerExpelled(p.id)).map(player => {
                 const yellows = getPlayerYellows(player.id)
                 return (
                   <button key={player.id} disabled={saving}
@@ -1323,7 +1323,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               ].map(({ team, teamId }) => (
                 <div key={teamId} style={{ marginBottom: 16 }}>
                   <p style={{ color: gold, fontSize: 12, fontWeight: 700, letterSpacing: 1, marginBottom: 8, fontFamily: 'Georgia, serif' }}>{team?.name}</p>
-                  {players.filter(p => p.team_id === teamId).map(player => {
+                  {players.filter(p => p.team_id === teamId && onFieldIds(teamId).has(p.id)).map(player => {
                     const expelled = isPlayerExpelled(player.id)
                     const yellows = getPlayerYellows(player.id)
                     return (
@@ -1450,7 +1450,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                       <div style={{ background: 'rgba(0,0,0,0.6)', padding: '10px 14px', borderBottom: `1px solid ${gold}22` }}>
                         <p style={{ color: gold, fontSize: 11, margin: '0 0 8px', fontFamily: 'Georgia, serif' }}>Reasignar a:</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                          {players.filter(p => p.team_id === g.team_id && !isPlayerExpelled(p.id)).map(player => (
+                          {players.filter(p => p.team_id === g.team_id && onFieldIds(g.team_id).has(p.id) && !isPlayerExpelled(p.id)).map(player => (
                             <button key={player.id}
                               onClick={() => reassignGoal(g.id, player.id)}
                               style={{ background: g.player_id === player.id ? gold : 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', color: g.player_id === player.id ? '#0D4F28' : '#fff', fontSize: 12, fontFamily: 'Georgia, serif', fontWeight: g.player_id === player.id ? 700 : 400 }}>
@@ -1504,7 +1504,7 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
         ) : (
           <>
             <PlayerCard
-              players={players}
+              players={players.filter(p => onFieldIds(p.team_id).has(p.id))}
               onVote={votePlayer}
               onChangeVote={async (_oldId, newId) => {
                 await supabase.from('mvp_votes').delete().eq('match_id', match.id).eq('device_id', deviceId)
@@ -1518,15 +1518,21 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
             {isAdmin && (
               <>
                 <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginTop: 20, marginBottom: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>CONFIRMAR DESTACADO OFICIAL</p>
-                {players.map(player => (
-                  <button key={player.id}
-                    onClick={() => setOfficialMvp(player.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
-                    <Avatar url={player.photo_url} name={player.name} size={32} />
-                    <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
-                    <span style={{ color: gold, fontSize: 12 }}>{getMvpVoteCount(player.id)} votos</span>
-                  </button>
-                ))}
+                {(() => {
+                  const votedPlayers = players.filter(p => onFieldIds(p.team_id).has(p.id) && getMvpVoteCount(p.id) > 0)
+                  if (votedPlayers.length === 0) {
+                    return <p style={{ color: '#a8d5b5', fontSize: 12, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>Todavía no hay votos</p>
+                  }
+                  return votedPlayers.map(player => (
+                    <button key={player.id}
+                      onClick={() => setOfficialMvp(player.id)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', marginBottom: 6, background: 'rgba(0,0,0,0.5)', border: `1px solid ${gold}88`, borderRadius: 10, padding: '10px 14px', cursor: 'pointer', color: '#fff', fontSize: 13, textAlign: 'left' as const }}>
+                      <Avatar url={player.photo_url} name={player.name} size={32} />
+                      <span style={{ fontFamily: 'Georgia, serif', flex: 1 }}>{player.name}</span>
+                      <span style={{ color: gold, fontSize: 12 }}>{getMvpVoteCount(player.id)} votos</span>
+                    </button>
+                  ))
+                })()}
               </>
             )}
           </>
