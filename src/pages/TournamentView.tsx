@@ -624,25 +624,31 @@ export default function TournamentView({ tournament, onReset, initialMatchId }: 
                     updated[j] = { ...updated[j], bio: e.target.value }
                     setEditingTeam({ ...editingTeam, _players: updated })
                   }} />
-                  <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
-                    const updated = [...editingTeam._players]
-                    updated[j] = { ...updated[j], _newPhoto: e.target.files?.[0] ?? null }
-                    setEditingTeam({ ...editingTeam, _players: updated })
-                  }} />
-                  <label style={{ color: '#a8d5b5', fontSize: 11, display: 'block', margin: '8px 0 2px', fontFamily: 'Georgia, serif' }}>
-                    Video corto (opcional, máx. 3MB){player.intro_video_url && !player._newVideo ? ' ✓ cargado' : ''}
-                  </label>
-                  <input type="file" accept="video/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
-                    const file = e.target.files?.[0] ?? null
-                    if (file && file.size > MAX_INTRO_VIDEO_BYTES) {
-                      alert('El video pesa mucho, subí uno más corto o de menor calidad (máximo 3MB).')
-                      e.target.value = ''
-                      return
-                    }
-                    const updated = [...editingTeam._players]
-                    updated[j] = { ...updated[j], _newVideo: file }
-                    setEditingTeam({ ...editingTeam, _players: updated })
-                  }} />
+                  <div style={{ border: `1px solid ${gold}33`, borderRadius: 8, padding: 8, marginTop: 4 }}>
+                    <p style={{ color: goldLight, fontSize: 10, fontWeight: 700, letterSpacing: 1, margin: '0 0 6px', fontFamily: 'Georgia, serif' }}>MULTIMEDIA DEL JUGADOR</p>
+                    <label style={{ color: '#a8d5b5', fontSize: 11, display: 'block', marginBottom: 2, fontFamily: 'Georgia, serif' }}>
+                      📷 Foto{player.photo_url && !player._newPhoto ? ' ✓ cargada' : ''}
+                    </label>
+                    <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11, marginBottom: 8 }} onChange={e => {
+                      const updated = [...editingTeam._players]
+                      updated[j] = { ...updated[j], _newPhoto: e.target.files?.[0] ?? null }
+                      setEditingTeam({ ...editingTeam, _players: updated })
+                    }} />
+                    <label style={{ color: '#a8d5b5', fontSize: 11, display: 'block', marginBottom: 2, fontFamily: 'Georgia, serif' }}>
+                      🎥 Video corto (opcional, máx. 3MB){player.intro_video_url && !player._newVideo ? ' ✓ cargado' : ''}
+                    </label>
+                    <input type="file" accept="video/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => {
+                      const file = e.target.files?.[0] ?? null
+                      if (file && file.size > MAX_INTRO_VIDEO_BYTES) {
+                        alert('El video pesa mucho, subí uno más corto o de menor calidad (máximo 3MB).')
+                        e.target.value = ''
+                        return
+                      }
+                      const updated = [...editingTeam._players]
+                      updated[j] = { ...updated[j], _newVideo: file }
+                      setEditingTeam({ ...editingTeam, _players: updated })
+                    }} />
+                  </div>
                 </div>
               </div>
             </div>
