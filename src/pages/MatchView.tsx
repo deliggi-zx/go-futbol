@@ -802,7 +802,10 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
     </div>
   )
 
-  const qrUrl = `${window.location.origin}/?match=${match.id}`
+  // MatchView solo se renderiza dentro de TournamentView, que a su vez solo
+  // vive en las rutas públicas /t/:slug o /:orgSlug — nunca bajo /admin — así
+  // que el pathname actual ya es la ruta pública correcta a compartir.
+  const qrUrl = `${window.location.origin}${window.location.pathname}?match=${match.id}`
 
   return (
     <div style={{
