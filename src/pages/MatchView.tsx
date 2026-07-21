@@ -76,6 +76,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const [mvpVotes, setMvpVotes] = useState<any[]>([])
   const [mvpOfficial, setMvpOfficial] = useState<any>(null)
   const [period, setPeriod] = useState(match.chukker_current ?? 1)
+  const [overtimeMinutesInput, setOvertimeMinutesInput] = useState(15)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showQR, setShowQR] = useState(false)
@@ -130,11 +131,24 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   const extraTimeUnlocked = !!clock && clock.chukker > totalPeriods
   const effectiveTotalPeriods = extraTimeUnlocked ? totalPeriods + 2 : totalPeriods
 
-  function getBaseSeconds(periodNum: number): number {
-    return (periodNum - 1) * periodSeconds
+  const displayMatch = { ...match, ...liveMatchFields }
+  const DEFAULT_OVERTIME_MINUTES = 15
+  const overtimeSeconds = (displayMatch.overtime_duration_minutes ?? DEFAULT_OVERTIME_MINUTES) * 60
+
+  // Los períodos reglamentarios usan periodSeconds (config del torneo); los de
+  // tiempo extra (periodNum > totalPeriods) usan la duración elegida puntualmente
+  // para este partido — otSecondsOverride sirve para el instante exacto en que se
+  // arranca el primer tiempo extra, cuando el estado todavía no reflejó el valor
+  // recién guardado en la base.
+  function getPeriodSeconds(periodNum: number, otSecondsOverride?: number): number {
+    return periodNum > totalPeriods ? (otSecondsOverride ?? overtimeSeconds) : periodSeconds
   }
 
-  const displayMatch = { ...match, ...liveMatchFields }
+  function getBaseSeconds(periodNum: number, otSecondsOverride?: number): number {
+    let base = 0
+    for (let p = 1; p < periodNum; p++) base += getPeriodSeconds(p, otSecondsOverride)
+    return base
+  }
 
   function currentSequence(team: 'home' | 'away'): boolean[] {
     return (team === 'home' ? displayMatch.penalty_home_sequence : displayMatch.penalty_away_sequence) ?? []
@@ -453,7 +467,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       const startedAt = new Date(clock.started_at).getTime() / 1000
       const elapsed = clock.elapsed_seconds + (now - startedAt)
       setLiveElapsed(elapsed)
-      const periodLimit = getBaseSeconds(clock.chukker) + periodSeconds
+      const periodLimit = getBaseSeconds(clock.chukker) + getPeriodSeconds(clock.chukker)
       if (elapsed >= periodLimit && !bellFiredRef.current) {
         bellFiredRef.current = true
         ringBell()
@@ -465,7 +479,7 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
   }, [clock])
 
   const clockElapsed = clock?.status === 'running' ? liveElapsed : (clock?.elapsed_seconds ?? 0)
-  const currentPeriodLimit = clock ? getBaseSeconds(clock.chukker) + periodSeconds : periodSeconds
+  const currentPeriodLimit = clock ? getBaseSeconds(clock.chukker) + getPeriodSeconds(clock.chukker) : periodSeconds
   const clockIsOvertime = clockElapsed >= currentPeriodLimit
 
   const isKickoffCountdown = !!clock && clock.chukker === 1 && clock.status === 'running' && clockElapsed < COUNTDOWN_FADE_SECONDS
@@ -543,13 +557,17 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
     await loadData()
   }
 
+  async function goToPenalties() {
+    const { data, error } = await supabase.from('matches')
+      .update({ penalty_home_sequence: [], penalty_away_sequence: [] })
+      .eq('id', match.id).select().single()
+    if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+  }
+
   async function finishMatch() {
     const isKnockout = match.stage !== 'group'
     if (isKnockout && homeGoals === awayGoals) {
-      const { data, error } = await supabase.from('matches')
-        .update({ penalty_home_sequence: [], penalty_away_sequence: [] })
-        .eq('id', match.id).select().single()
-      if (!error && data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+      await goToPenalties()
       return
     }
     // El reloj se frena siempre al finalizar, hayan tocado "Finalizar tiempo" antes o no.
@@ -563,6 +581,24 @@ export default function MatchView({ match, tournament, onBack, isAdmin }: Props)
       home_score: homeGoals,
       away_score: awayGoals,
       winner_id: winnerId,
+    }).eq('id', match.id)
+    closeDailyRoom()
+    onBack()
+  }
+
+  // Acepta el empate como resultado final — a diferencia de finishMatch(), acá
+  // el llamador ya sabe que el marcador va a quedar empatado a propósito (el
+  // admin lo elige tras el tiempo reglamentario o durante el tiempo extra), así
+  // que no redirige a penales: cierra el partido sin winner_id. Esa llave del
+  // bracket queda sin resolver hasta que se cargue un resultado corregido.
+  async function finishMatchAsDraw() {
+    await stopClock()
+    await supabase.from('matches').update({
+      status: 'finished',
+      played_at: new Date().toISOString(),
+      home_score: homeGoals,
+      away_score: awayGoals,
+      winner_id: null,
     }).eq('id', match.id)
     closeDailyRoom()
     onBack()
@@ -725,10 +761,14 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
     await loadData()
   }
 
-  async function startClock(periodNum: number) {
+  // overtimeMinutesOverride: solo lo pasa startOvertime() al arrancar el
+  // primer tiempo extra, para no depender de que el estado ya haya recargado
+  // el overtime_duration_minutes recién guardado en la base.
+  async function startClock(periodNum: number, overtimeMinutesOverride?: number) {
     const now = new Date().toISOString()
     bellFiredRef.current = false
-    const baseSeconds = getBaseSeconds(periodNum)
+    const otSecondsOverride = overtimeMinutesOverride != null ? overtimeMinutesOverride * 60 : undefined
+    const baseSeconds = getBaseSeconds(periodNum, otSecondsOverride)
     const initialSeconds = periodNum === 1 ? baseSeconds - COUNTDOWN_SECONDS : baseSeconds
     if (clock) {
       const { data, error } = await supabase.from('match_clock')
@@ -744,6 +784,17 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
       clockRef.current = data; setClock(data); setPeriod(periodNum)
     }
     await supabase.from('matches').update({ status: 'live', chukker_current: periodNum }).eq('id', match.id)
+  }
+
+  // Guarda la duración elegida para el tiempo extra de este partido puntual
+  // (no toca tournament.chukker_duration_minutes) y recién ahí arranca el reloj.
+  async function startOvertime(minutes: number) {
+    const mins = Math.max(1, Math.round(minutes) || DEFAULT_OVERTIME_MINUTES)
+    const { data, error } = await supabase.from('matches')
+      .update({ overtime_duration_minutes: mins }).eq('id', match.id).select().single()
+    if (error) { alert(`Error: ${error.message}`); return }
+    if (data) setLiveMatchFields((prev: any) => ({ ...prev, ...data }))
+    await startClock(totalPeriods + 1, mins)
   }
 
   async function pauseClock() {
@@ -1107,16 +1158,41 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
                     : (clock.chukker + 1 - totalPeriods === 1 ? '1° Tiempo Extra' : '2° Tiempo Extra')}
                 </button>
               )}
-              {regulationJustEndedTied && (
-                <button onClick={() => startClock(totalPeriods + 1)}
-                  style={{ background: 'linear-gradient(135deg, #7c2d12, #9a3412)', border: '1px solid #fb923c66', borderRadius: 10, padding: '10px 24px', cursor: 'pointer', color: '#fb923c', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
-                  Jugar tiempo extra
-                </button>
-              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Panel empate al cierre del tiempo reglamentario — el admin elige entre
+          jugar tiempo extra, ir directo a penales, o aceptar el empate. */}
+      {isAdmin && regulationJustEndedTied && (
+        <div style={{ margin: '16px', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)', borderRadius: 16, border: `1px solid ${gold}33`, padding: 16 }}>
+          <p style={{ color: goldLight, fontSize: 12, fontWeight: 700, letterSpacing: 2, marginBottom: 4, textAlign: 'center' as const, fontFamily: 'Georgia, serif' }}>EMPATE AL CIERRE DEL TIEMPO REGLAMENTARIO</p>
+          <p style={{ color: '#a8d5b5', fontSize: 11, textAlign: 'center' as const, marginBottom: 16 }}>
+            {homeGoals}-{awayGoals} · Elegí cómo seguir
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, justifyContent: 'center' }}>
+            <span style={{ color: '#fb923c', fontSize: 12, fontFamily: 'Georgia, serif' }}>Duración del tiempo extra (min):</span>
+            <input type="number" min={1} max={90} value={overtimeMinutesInput}
+              onChange={e => setOvertimeMinutesInput(Number(e.target.value))}
+              style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid #fb923c66', borderRadius: 8, padding: '6px 10px', color: '#fb923c', fontSize: 14, width: 56, textAlign: 'center' as const, fontFamily: 'Georgia, serif', fontWeight: 700 }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+            <button onClick={() => startOvertime(overtimeMinutesInput)}
+              style={{ background: 'linear-gradient(135deg, #7c2d12, #9a3412)', border: '1px solid #fb923c66', borderRadius: 10, padding: '12px', cursor: 'pointer', color: '#fb923c', fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Jugar tiempo extra
+            </button>
+            <button onClick={goToPenalties}
+              style={{ background: 'rgba(201,168,76,0.15)', border: `1px solid ${gold}66`, borderRadius: 10, padding: '12px', cursor: 'pointer', color: gold, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Ir a penales
+            </button>
+            <button onClick={finishMatchAsDraw}
+              style={{ background: 'transparent', border: `1px solid ${gold}44`, borderRadius: 10, padding: '12px', cursor: 'pointer', color: `${gold}bb`, fontWeight: 700, fontSize: 13, fontFamily: 'Georgia, serif', letterSpacing: 1 }}>
+              Finalizar partido (empate)
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Panel definición por penales — lucecitas visibles para todos, botones solo admin */}
       {shootoutActive && (
@@ -1300,11 +1376,6 @@ async function addCard(playerId: string, teamId: string, type: 'yellow' | 'red')
               </button>
             )}
           </div>
-          {regulationJustEndedTied && (
-            <p style={{ color: '#fb923c', fontSize: 12, textAlign: 'center' as const, marginTop: 10, marginBottom: 0, fontFamily: 'Georgia, serif' }}>
-              Empate al final del tiempo reglamentario — jugá el tiempo extra para definir antes de ir a penales.
-            </p>
-          )}
         </div>
       )}
 
