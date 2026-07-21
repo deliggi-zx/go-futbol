@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Avatar } from '../components/Avatar'
 import { slugify } from '../lib/slug'
+import { downloadTeamsTemplate, parseTeamsExcel } from '../lib/teamsExcel'
 
 type Props = { onCreated: (tournament: any, matchId: string) => void; orgId?: string }
 
@@ -42,6 +43,23 @@ export default function QuickMatchSetup({ onCreated, orgId }: Props) {
       ? { ...t, players: t.players.filter((_, j) => j !== playerIdx) }
       : t
     ))
+  }
+
+  async function handleExcelUpload(file: File) {
+    const parsed = await parseTeamsExcel(file)
+    if (parsed.length === 0) { alert('No se encontraron equipos en el archivo'); return }
+    if (parsed.length < 2) { alert('El archivo debe tener al menos 2 equipos (local y visitante)'); return }
+
+    // Partido individual: siempre son 2 equipos (local/visitante) — si el
+    // Excel trae más, se usan los dos primeros y se avisa.
+    const [home, away] = parsed
+    setTeams([
+      { name: home.name, logo: home.logo, players: home.players.map(p => ({ name: p.name, photo: p.photo, numero: p.numero, bio: p.bio })) },
+      { name: away.name, logo: away.logo, players: away.players.map(p => ({ name: p.name, photo: p.photo, numero: p.numero, bio: p.bio })) },
+    ])
+    alert(parsed.length > 2
+      ? `✓ Se cargaron los primeros 2 equipos (${home.name} vs ${away.name}). Se ignoraron ${parsed.length - 2} equipo(s) adicional(es) del archivo.`
+      : `✓ Equipos importados: ${home.name} vs ${away.name}`)
   }
 
   async function uploadImage(file: File, path: string): Promise<string | null> {
@@ -161,6 +179,23 @@ export default function QuickMatchSetup({ onCreated, orgId }: Props) {
       </div>
 
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
+        {/* Importar desde Excel */}
+        <div style={{ background: '#0D4F28', borderRadius: 12, padding: 16, marginBottom: 16, border: '1px solid #1A6B35' }}>
+          <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Importar desde Excel</p>
+          <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 12px' }}>Descargá la plantilla, completala con los dos equipos (local y visitante) y subila para cargar el plantel automáticamente.</p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+            <button onClick={downloadTeamsTemplate} style={{ ...styles.btnSm, background: '#1e40af', marginTop: 0 }}>
+              ↓ Descargar plantilla
+            </button>
+            <label style={{ ...styles.btnSm, marginTop: 0, cursor: 'pointer', display: 'inline-block' }}>
+              ↑ Subir Excel
+              <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) handleExcelUpload(file)
+              }} />
+            </label>
+          </div>
+        </div>
         {teams.map((team, i) => (
           <div key={i} style={styles.teamCard}>
             <p style={{ color: '#a8d5b5', fontSize: 13, marginBottom: 12 }}>{i === 0 ? 'Equipo local' : 'Equipo visitante'}</p>
@@ -180,6 +215,7 @@ export default function QuickMatchSetup({ onCreated, orgId }: Props) {
                 <div style={{ flex: 1 }}>
                   <input style={{ ...styles.input, marginBottom: 4 }} placeholder={`Jugador ${j + 1}`} value={player.name} onChange={e => updatePlayer(i, j, 'name', e.target.value)} />
                   <input style={{ ...styles.input, width: 80, marginBottom: 4 }} type="number" placeholder="Nro" min={0} max={99} value={player.numero} onChange={e => updatePlayer(i, j, 'numero', Number(e.target.value))} />
+                  <input style={{ ...styles.input, marginBottom: 4 }} placeholder="Reseña breve (opcional)" value={player.bio} onChange={e => updatePlayer(i, j, 'bio', e.target.value)} />
                   <input type="file" accept="image/*" style={{ color: '#a8d5b5', fontSize: 11 }} onChange={e => updatePlayer(i, j, 'photo', e.target.files?.[0] ?? null)} />
                 </div>
                 <button onClick={() => removePlayer(i, j)} style={{ background: 'none', border: 'none', color: '#a8d5b5', cursor: 'pointer', fontSize: 18, padding: '4px 8px' }}>×</button>

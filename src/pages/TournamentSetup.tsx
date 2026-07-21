@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { Avatar } from '../components/Avatar'
 import { slugify } from '../lib/slug'
-import * as XLSX from 'xlsx'
+import { downloadTeamsTemplate, parseTeamsExcel } from '../lib/teamsExcel'
 
 type Props = { onCreated: (t: any) => void; orgId?: string }
 
 const MAX_INTRO_VIDEO_BYTES = 3 * 1024 * 1024
 
-const emptyTeam = (group = 'A') => ({
+const emptyTeam = (group: string | null = 'A') => ({
   name: '', group, logo: null as File | null,
   players: [{ name: '', photo: null as File | null, video: null as File | null, numero: 0, goles: 0, titular: 'S', bio: '' }]
 })
@@ -96,62 +96,16 @@ export default function TournamentSetup({ onCreated, orgId }: Props) {
     setAwards(prev => [...prev, newAward.trim()])
     setNewAward('')
   }
-function downloadTemplate() {
-  const data = [
-    { grupo: 'A', equipo: 'Tribu Fútbol', jugador: 'Juan Pérez', numero: 1, goles: 0, titular: 'S', reseña: 'Arquero seguro' },
-    { grupo: 'A', equipo: 'Tribu Fútbol', jugador: 'Pedro García', numero: 2, goles: 0, titular: 'S', reseña: '' },
-    { grupo: 'B', equipo: 'La Dolfina', jugador: 'Carlos López', numero: 3, goles: 0, titular: 'N', reseña: '' },
-  ]
-  const ws = XLSX.utils.json_to_sheet(data)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Equipos')
-  XLSX.writeFile(wb, 'plantilla_gofutbol.xlsx')
-}
- 
+  async function handleExcelUpload(file: File) {
+    const parsed = await parseTeamsExcel(file)
+    if (parsed.length === 0) { alert('No se encontraron equipos en el archivo'); return }
 
-  function handleExcelUpload(file: File) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer)
-      const workbook = XLSX.read(data, { type: 'array' })
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows: any[] = XLSX.utils.sheet_to_json(sheet)
+    const importedTeams = format === 'knockout' ? parsed.map(t => ({ ...t, group: null })) : parsed
 
-      // Agrupar filas por equipo
-      const teamsMap: Record<string, any> = {}
-      for (const row of rows) {
-  const teamName = String(row.equipo ?? '').trim()
-  if (!teamName) continue
-  if (!teamsMap[teamName]) {
-    teamsMap[teamName] = {
-      name: teamName,
-      group: format === 'knockout' ? null : String(row.grupo ?? 'A').trim().toUpperCase(),
-      logo: null,
-      players: []
-    }
-  }
-  const playerName = String(row.jugador ?? '').trim()
-  if (playerName) {
-    teamsMap[teamName].players.push({
-      name: playerName,
-      photo: null,
-      numero: Number(row.numero ?? 0),
-      goles: Number(row.goles ?? 0),
-      titular: String(row.titular ?? 'S').trim().toUpperCase(),
-      bio: String(row.reseña ?? '')
-    })
-  }
-}
-
-      const importedTeams = Object.values(teamsMap)
-      if (importedTeams.length === 0) { alert('No se encontraron equipos en el archivo'); return }
-
-      // Actualizar cantidad de equipos y teams
-      setTeamCount(importedTeams.length)
-      setTeams(importedTeams)
-      alert(`✓ ${importedTeams.length} equipos importados correctamente`)
-    }
-    reader.readAsArrayBuffer(file)
+    // Actualizar cantidad de equipos y teams
+    setTeamCount(importedTeams.length)
+    setTeams(importedTeams)
+    alert(`✓ ${importedTeams.length} equipos importados correctamente`)
   }
   function removeAward(i: number) {
     setAwards(prev => prev.filter((_, idx) => idx !== i))
@@ -404,7 +358,7 @@ function downloadTemplate() {
             <p style={{ color: '#C9A84C', fontWeight: 700, fontSize: 14, margin: '0 0 8px' }}>Importar desde Excel</p>
             <p style={{ color: '#a8d5b5', fontSize: 12, margin: '0 0 12px' }}>Descargá la plantilla, completala y subila para cargar todos los equipos automáticamente.</p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
-              <button onClick={downloadTemplate} style={{ ...styles.btnSm, background: '#1e40af', marginTop: 0 }}>
+              <button onClick={downloadTeamsTemplate} style={{ ...styles.btnSm, background: '#1e40af', marginTop: 0 }}>
                 ↓ Descargar plantilla
               </button>
               <label style={{ ...styles.btnSm, marginTop: 0, cursor: 'pointer', display: 'inline-block' }}>
